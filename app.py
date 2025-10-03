@@ -5,7 +5,7 @@ from sklearn.ensemble import RandomForestRegressor
 from datetime import datetime, timedelta, date
 import matplotlib.pyplot as plt
 import folium
-from streamlit_folium import st_folium  # Updated from folium_static
+from streamlit_folium import st_folium
 from sklearn.model_selection import train_test_split
 import time
 
@@ -30,7 +30,7 @@ english_trans = {
     'prediction': 'AI Crowd Prediction (#1)',
     'pilgrim_app': 'Pilgrim View',
     'authority_dashboard': 'Authority Dashboard',
-    'language': 'Language / ભાષા / भाषા',
+    'language': 'Language / ભાષા / भाषा',
     'view_as': 'View As',
     'live_mode': 'Live Mode (Auto-Update)',
     'temple_info_wait': 'Engagement: Timings, Routes, Facilities (#6)',
@@ -82,6 +82,7 @@ TRANSLATIONS = {
         **english_trans,
         'title': '🛕 યાત્રા સેવક: મલ્ટી-મંદિર વ્યવસ્થાપન (4 સ્થળો)',
         'select_temple': 'મંદિર પસંદ કરો',
+        'live_mode': 'લાઇવ મોડ (ઓટો-અપડેટ)',
         'home_info': 'ઘર અને મંદિર માહિતી (#6)',
         'join_queue': 'સ્માર્ટ કતાર અને ટિકિટિંગ (#2)',
         'sos_nav': 'ઇમરજન્સી અને સુરક્ષા (#4)',
@@ -93,7 +94,6 @@ TRANSLATIONS = {
         'authority_dashboard': 'અધિકારી ડેશબોર્ડ',
         'language': 'ભાષા / ભાષા / भाषा',
         'view_as': 'જોવા માટે',
-        'live_mode': 'લાઇવ મોડ (ઓટો-અપડેટ)',
         'temple_info_wait': 'એન્ગેજમેન્ટ: સમય, માર્ગ, સુવિધાઓ (#6)',
         'current_weather': 'લાઇવ હવામાન (#1): {}°C. નીચે માર્ગો.',
         'virtual_darshan': 'વર્ચ્યુઅલ કતાર વ્યવસ્થાપન',
@@ -140,6 +140,7 @@ TRANSLATIONS = {
         **english_trans,
         'title': '🛕 यात्रा सेवक: मल्टी-मंदिर प्रबंधन (4 स्थल)',
         'select_temple': 'मंदिर चुनें',
+        'live_mode': 'लाइव मोड (ऑटो-अपडेट)',
         'home_info': 'घर और मंदिर जानकारी (#6)',
         'join_queue': 'स्मार्ट कतार और टिकटिंग (#2)',
         'sos_nav': 'आपातकालीन और सुरक्षा (#4)',
@@ -151,7 +152,6 @@ TRANSLATIONS = {
         'authority_dashboard': 'प्राधिकरण डैशबोर्ड',
         'language': 'भाषा / ભાષા / भाषा',
         'view_as': 'देखें के रूप में',
-        'live_mode': 'लाइव मोड (ऑटो-अपडेट)',
         'temple_info_wait': 'एंगेजमेंट: समय, मार्ग, सुविधाएं (#6)',
         'current_weather': 'लाइव मौसम (#1): {}°C. नीचे मार्ग.',
         'virtual_darshan': 'वर्चुअल कतार प्रबंधन',
@@ -211,7 +211,7 @@ def add_log(msg):
     st.session_state.log_entries.append(f"[{timestamp}] {msg}")
     if len(st.session_state.log_entries) > 10: st.session_state.log_entries.pop(0)
 
-# Model (Fix: is_holiday to int)
+# Model
 @st.cache_data
 def load_and_train_model(base_footfall):
     np.random.seed(42)
@@ -220,8 +220,8 @@ def load_and_train_model(base_footfall):
     festivals = ['2025-01-14', '2025-02-26', '2025-10-20', '2025-11-15', '2025-09-29', '2025-10-07']
     is_festival = [1 if d.strftime('%Y-%m-%d') in festivals else 0 for d in dates]
     temp = np.random.normal(28, 5, n).clip(15, 40)
-    is_holiday = [(d.weekday() >= 5) or isf for d, isf in zip(dates, is_festival)]
-    is_holiday = pd.Series(is_holiday).astype(int)  # Fix: int for Arrow
+    is_holiday_list = [(d.weekday() >= 5) or isf for d, isf in zip(dates, is_festival)]
+    is_holiday = pd.Series(is_holiday_list).astype(int)  # Fix Arrow
     festival_boost = np.array(is_festival) * (base_footfall * 2)
     holiday_boost = np.array(is_holiday) * (base_footfall * 0.2)
     weather_factor = (30 - temp) / 10
@@ -249,8 +249,8 @@ def predict_crowd(temple, days_ahead=7):
         future_n = len(future_dates)
         future_temp = np.random.normal(28, 5, future_n).clip(15, 40)
         future_fest = [1 if d.strftime('%Y-%m-%d') in ['2025-10-20', '2025-11-01', '2025-11-15'] else 0 for d in future_dates]
-        future_hol = [(d.weekday() >= 5) or ff for d, ff in zip(future_dates, future_fest)]
-        future_hol = pd.Series(future_hol).astype(int)  # Fix: int
+        future_hol_list = [(d.weekday() >= 5) or ff for d, ff in zip(future_dates, future_fest)]
+        future_hol = pd.Series(future_hol_list).astype(int)  # Fix Arrow
         future_df = pd.DataFrame({'date': future_dates, 'temperature': future_temp, 'is_festival': future_fest, 'is_holiday': future_hol})
         future_df['month'] = future_df['date'].dt.month
         future_df['dayofweek'] = future_df['date'].dt.dayofweek
@@ -278,7 +278,9 @@ def join_queue(temple, user_id, priority=False, lang='English'):
     add_log(f"Queue joined: User {user_id} at {temple}")
     return TRANSLATIONS[lang]['token_issued'].format(est_wait, slot) + f" ({slot_type} - Dynamic Slot)"
 
-# Surveillance (Call on load for defaults)
+# Surveillance (Run on load for defaults)
+alert, density = simulate_monitoring(temple)  # Fixed: Call here for defaults
+
 def simulate_monitoring(temple):
     st.session_state.density = np.random.uniform(0.3, 0.9)
     alert = None
@@ -291,7 +293,7 @@ def simulate_monitoring(temple):
             add_log(f"Panic alert: {alert['location']} at {temple}")
     return alert, st.session_state.density
 
-# Map (st_folium)
+# Map
 def create_map(temple, feature='parking'):
     data = TEMPLE_DATA[temple]
     m = folium.Map(location=[data['lat'], data['lng']], zoom_start=15)
@@ -359,7 +361,7 @@ if role == t['pilgrim_app']:
         st.info(f"🗺️ {t['routes']}")
         weather_temp = np.random.normal(28, 2)
         st.info(t['current_weather'].format(weather_temp))
-        st_folium(create_map(temple, 'parking'), width=700, height=500)  # Fixed
+        st_folium(create_map(temple, 'parking'), width=700, height=500, key=f"pilgrim_home_map_{temple}")  # Unique key
         if st.session_state.surge_active:
             st.warning(t['surge_alert'].format('peak hours'))
         if st.session_state.crowd_alert_sent:
@@ -396,7 +398,7 @@ if role == t['pilgrim_app']:
             st.session_state.drone_dispatched = True
             add_log("SOS drone dispatched to remote area")
             st.success(t['drone_dispatch'])
-            st_folium(create_map(temple, 'drone'), width=700, height=500)  # Fixed
+            st_folium(create_map(temple, 'drone'), width=700, height=500, key=f"pilgrim_sos_drone_{temple}")  # Unique key
     
     with tabs[3]:  # #3
         st.header(f"{t['surveillance']} - {temple}")
@@ -423,13 +425,13 @@ if role == t['pilgrim_app']:
                 ax.set_title('Drone Analytics (#3)')
                 st.pyplot(fig)
                 st.metric("Drones Active", "4/5", delta="Patrolling")
-            st_folium(create_map(temple, 'drone'), width=700, height=500)  # Fixed
-            if 'alert' in locals() and alert:  # Fixed: Check local var
+            st_folium(create_map(temple, 'drone'), width=700, height=500, key=f"pilgrim_surveillance_drone_{temple}")  # Unique key
+            if locals().get('alert'):  # Fixed: Safe check
                 st.error(t['panic_detected'].format(alert['location']))
     
     with tabs[4]:  # #5
         st.header(f"{t['parking_mobility']} - {temple}")
-        st_folium(create_map(temple, 'parking'), width=700, height=500)  # Fixed
+        st_folium(create_map(temple, 'parking'), width=700, height=500, key=f"pilgrim_traffic_map_{temple}")  # Unique key
         data = TEMPLE_DATA[temple]
         st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))
         st.subheader(t['shuttle_schedule'])
@@ -453,7 +455,7 @@ if role == t['pilgrim_app']:
     
     with tabs[6]:  # #4 Medical
         st.header(f"{t['medical_map']} - {temple}")
-        st_folium(create_map(temple, 'medical'), width=700, height=500)  # Fixed
+        st_folium(create_map(temple, 'medical'), width=700, height=500, key=f"pilgrim_medical_map_{temple}")  # Unique key
         st.info("Nearest Aid: 200m - Mapped for Quick Response.")
 
 elif role == t['authority_dashboard']:
@@ -498,8 +500,8 @@ elif role == t['authority_dashboard']:
             st.metric("IoT Sensors", f"{st.session_state.density*100:.0f}% Density")
             st.metric("CCTV Feeds", "Live", "AI Analytics")
             st.metric("Drones", "4/5 Deployed", "Auto Patrol")
-            st_folium(create_map(temple, 'drone'), width=700, height=500)  # Fixed
-        if 'alert' in locals() and alert:  # Fixed: Check local var
+            st_folium(create_map(temple, 'drone'), width=700, height=500, key=f"auth_surveillance_drone_{temple}")  # Unique key
+        if locals().get('alert'):  # Fixed
             st.error(t['panic_detected'].format(alert['location']))
             st.session_state.crowd_alert_sent = True
     
@@ -526,7 +528,7 @@ elif role == t['authority_dashboard']:
     
     with tabs[4]:  # #5
         st.header(f"{t['parking_mobility']} - {temple}")
-        st_folium(create_map(temple, 'parking'), width=700, height=500)  # Fixed
+        st_folium(create_map(temple, 'parking'), width=700, height=500, key=f"auth_traffic_map_{temple}")  # Unique key
         data = TEMPLE_DATA[temple]
         st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))
         st.subheader(t['shuttle_schedule'])
