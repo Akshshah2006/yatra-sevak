@@ -471,7 +471,7 @@ elif role == t['authority_dashboard']:
         st.metric("Flow", light, "City Police System")
     
     with tabs[5]:  # #6
-        st.header(f"Pilgrim Engagement (#6) - {temple}")
+        st.header(f"Pilgrim Engagement () - {temple}")
         col1, col2, col3 = st.columns(3)
         q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple])
         col1.metric("Wait Times", f"{np.mean(q_df['est_wait']):.0f} min Avg" if not q_df.empty else "N/A")
@@ -481,9 +481,9 @@ elif role == t['authority_dashboard']:
     
     with tabs[6]:  # #7
         st.header(f"{t['accessibility']} - {temple}")
-        st.checkbox("Enable Priority Queues (#7)")
+        st.checkbox("Enable Priority Queues ()")
         if st.button("Broadcast Voice Nav"):
-            st.success("Voice Guide Sent to All Devices (#7)")
+            st.success("Voice Guide Sent to All Devices ()")
             st.info(t['audio_sim'])
 
 st.markdown("---")
