@@ -442,4 +442,4 @@ if role == t['pilgrim_app']:
         st.metric("Flow Status", flow, "Police Dynamic System")
     
     with tabs[5]:  # #7
-        st.header(f"{t['voice_nav']"}
+        st.header(f'{t['voice_nav']'}
