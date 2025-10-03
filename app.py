@@ -32,8 +32,9 @@ english_trans = {
     'authority_dashboard': 'Authority Dashboard',
     'language': 'Language / ભાષા / भाषा',
     'view_as': 'View As',
+    'live_mode': 'Live Mode (Auto-Update)',
     'temple_info_wait': 'Engagement: Timings, Routes, Facilities (#6)',
-    'current_weather': 'Weather (for #1): 28°C (Sim). Routes Below.',
+    'current_weather': 'Live Weather (for #1): {}°C. Routes Below.',
     'virtual_darshan': 'Virtual Queue Management',
     'elderly_priority': 'Priority for Elderly/Disabled (#7)',
     'join_btn': 'Get Digital Darshan Pass',
@@ -68,7 +69,11 @@ english_trans = {
     'dynamic_slots': 'Dynamic Slots: Free if Low Demand (#2)',
     'voice_nav': 'Voice Mode for Visually Impaired (#7)',
     'shuttle_schedule': 'Shuttle Coordination (#5)',
-    'traffic_flow': 'Dynamic Traffic (#5)'
+    'traffic_flow': 'Dynamic Traffic (#5)',
+    'live_log': 'Live Event Log',
+    'cctv_feed': 'Live CCTV Feed (#3)',
+    'drone_view': 'Drone Patrol View (#3/#4)',
+    'current_footfall': 'Live Footfall Counter (#1)'
 }
 
 TRANSLATIONS = {
@@ -88,8 +93,9 @@ TRANSLATIONS = {
         'authority_dashboard': 'અધિકારી ડેશબોર્ડ',
         'language': 'ભાષા / ભાષા / भाषा',
         'view_as': 'જોવા માટે',
+        'live_mode': 'લાઇવ મોડ (ઓટો-અપડેટ)',
         'temple_info_wait': 'એન્ગેજમેન્ટ: સમય, માર્ગ, સુવિધાઓ (#6)',
-        'current_weather': 'હવામાન (#1): 28°C (સિમ). નીચે માર્ગો.',
+        'current_weather': 'લાઇવ હવામાન (#1): {}°C. નીચે માર્ગો.',
         'virtual_darshan': 'વર્ચ્યુઅલ કતાર વ્યવસ્થાપન',
         'elderly_priority': 'વૃદ્ધ/અપંગ માટે પ્રાયોરિટી (#7)',
         'join_btn': 'ડિજિટલ દર્શન પાસ મેળવો',
@@ -124,7 +130,11 @@ TRANSLATIONS = {
         'dynamic_slots': 'ડાયનેમિક સ્લોટ્સ: ઓછી માંગમાં મફત (#2)',
         'voice_nav': 'દ્રષ્ટિહીન માટે વૉઇસ મોડ (#7)',
         'shuttle_schedule': 'શટલ કોર્ડિનેશન (#5)',
-        'traffic_flow': 'ડાયનેમિક ટ્રાફિક (#5)'
+        'traffic_flow': 'ડાયનેમિક ટ્રાફિક (#5)',
+        'live_log': 'લાઇવ ઇવેન્ટ લોગ',
+        'cctv_feed': 'લાઇવ CCTV ફીડ (#3)',
+        'drone_view': 'ડ્રોન પેટ્રોલ વ્યૂ (#3/#4)',
+        'current_footfall': 'લાઇવ ફૂટફોલ કાઉન્ટર (#1)'
     },
     'Hindi': {
         **english_trans,
@@ -141,8 +151,9 @@ TRANSLATIONS = {
         'authority_dashboard': 'प्राधिकरण डैशबोर्ड',
         'language': 'भाषा / ભાષા / भाषा',
         'view_as': 'देखें के रूप में',
+        'live_mode': 'लाइव मोड (ऑटो-अपडेट)',
         'temple_info_wait': 'एंगेजमेंट: समय, मार्ग, सुविधाएं (#6)',
-        'current_weather': 'मौसम (#1): 28°C (सिम). नीचे मार्ग.',
+        'current_weather': 'लाइव मौसम (#1): {}°C. नीचे मार्ग.',
         'virtual_darshan': 'वर्चुअल कतार प्रबंधन',
         'elderly_priority': 'वृद्ध/अपंग के लिए प्राथमिकता (#7)',
         'join_btn': 'डिजिटल दर्शन पास प्राप्त करें',
@@ -177,7 +188,11 @@ TRANSLATIONS = {
         'dynamic_slots': 'डायनामिक स्लॉट्स: कम मांग में मुफ्त (#2)',
         'voice_nav': 'दृष्टिबाधित के लिए वॉइस मोड (#7)',
         'shuttle_schedule': 'शटल कोऑर्डिनेशन (#5)',
-        'traffic_flow': 'डायनामिक ट्रैफिक (#5)'
+        'traffic_flow': 'डायनामिक ट्रैफिक (#5)',
+        'live_log': 'लाइव इवेंट लॉग',
+        'cctv_feed': 'लाइव CCTV फीड (#3)',
+        'drone_view': 'ड्रोन पेट्रोल व्यू (#3/#4)',
+        'current_footfall': 'लाइव फुटफॉल काउंटर (#1)'
     }
 }
 
