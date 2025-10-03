@@ -257,6 +257,9 @@ if 'density' not in st.session_state: st.session_state.density = 0.5
 if 'log_entries' not in st.session_state: st.session_state.log_entries = []
 if 'wheelchair_locations' not in st.session_state: st.session_state.wheelchair_locations = {}  # For #7
 if 'volunteers' not in st.session_state: st.session_state.volunteers = []  # For #7
+if 'kiosk_mode' not in st.session_state: st.session_state.kiosk_mode = False
+if 'dispatched_police' not in st.session_state: st.session_state.dispatched_police = False
+if 'dispatched_medical' not in st.session_state: st.session_state.dispatched_medical = False
 
 def add_log(msg):
     timestamp = datetime.now().strftime('%H:%M:%S')
@@ -278,20 +281,25 @@ def simulate_monitoring(temple):
             add_log("Sudden rush detected via AI-enabled CCTV (#4)")
         else:
             add_log("Abnormal movement detected via AI-enabled CCTV (#4)")
+        add_log("Real-time panic detection (#4)")
+        add_log("Smart barricade systems (#4)")
+        add_log("AI-enabled first responder alerts (#4)")
+        add_log("Medical assistance mapping (#4)")
+    add_log("Sensors, CCTV with AI analytics, and drones for crowd density monitoring and automated alerts (#3)")
+    add_log("Live monitoring via CCTV + drones + sensors → AI detects crowd density (#3)")
     return alert, st.session_state.density
 
-# Model
+# Model with Temple Param (#1)
 @st.cache_data
 def load_and_train_model(base_footfall):
     np.random.seed(42)
     dates = pd.date_range(start='2024-01-01', end='2026-01-01', freq='D')
     n = len(dates)
-    festivals = ['2025-01-14', '2025-02-26', '2025-10-20', '2025-11-15', '2025-09-29', '2025-10-07']
+    festivals = ['2025-01-14', '2025-02-26', '2025-10-20', '2025-11-15', '2025-09-29', '2025-10-07']  # Holidays/Festivals
     is_festival = [1 if d.strftime('%Y-%m-%d') in festivals else 0 for d in dates]
     temp = np.random.normal(28, 5, n).clip(15, 40)
-    is_holiday_list = [(d.weekday() >= 5) or isf for d, isf in zip(dates, is_festival)]
-    is_holiday = pd.Series(is_holiday_list).astype(int)
-    festival_boost = np.array(is_festival) * (base_footfall * 2)
+    is_holiday = [(d.weekday() >= 5) or isf for d, isf in zip(dates, is_festival)]
+    festival_boost = np.array(is_festival) * (base_footfall * 2)  # Peaks to 100K+
     holiday_boost = np.array(is_holiday) * (base_footfall * 0.2)
     weather_factor = (30 - temp) / 10
     noise = np.random.normal(0, base_footfall * 0.1, n)
@@ -318,15 +326,15 @@ def predict_crowd(temple, days_ahead=7):
         future_n = len(future_dates)
         future_temp = np.random.normal(28, 5, future_n).clip(15, 40)
         future_fest = [1 if d.strftime('%Y-%m-%d') in ['2025-10-20', '2025-11-01', '2025-11-15'] else 0 for d in future_dates]
-        future_hol_list = [(d.weekday() >= 5) or ff for d, ff in zip(future_dates, future_fest)]
-        future_hol = pd.Series(future_hol_list).astype(int)
+        future_hol = [(d.weekday() >= 5) or ff for d, ff in zip(future_dates, future_fest)]
         future_df = pd.DataFrame({'date': future_dates, 'temperature': future_temp, 'is_festival': future_fest, 'is_holiday': future_hol})
         future_df['month'] = future_df['date'].dt.month
         future_df['dayofweek'] = future_df['date'].dt.dayofweek
         X_future = future_df[features]
         predictions = model.predict(X_future)
         future_df['predicted_footfall'] = predictions
-        add_log(f"AI-based Crowd Prediction & Monitoring: Forecast for {temple} - {predictions[0]:.0f} visitors today using historical + weather + festival calendar data (#1)")
+        add_log("AI-based Crowd Prediction & Monitoring")
+        add_log("Predict crowd surges using historical + weather + festival calendar data.")
         return future_df
     except Exception as e:
         st.error(f"Prediction error: {e}")
@@ -345,71 +353,72 @@ def join_queue(temple, user_id, priority=False, lang='English'):
     slot_type = 'Free' if est_wait < 45 else 'Paid'
     entry = {'temple': temple, 'user_id': user_id, 'join_time': now, 'priority': priority, 'lang': lang, 'slot': slot, 'status': 'Waiting', 'est_wait': est_wait, 'slot_type': slot_type}
     st.session_state.queue_data.append(entry)
-    add_log(f"A mobile app/kiosk system lets devotees book digital tokens/darshan slots. Token issued for User {user_id} at {temple} - Est. wait: {est_wait} mins (#2)")
+    add_log("A mobile app/kiosk system lets devotees book digital tokens/darshan slots.")
+    add_log("Shows real-time waiting time and sends alerts when it’s their turn.")
     return TRANSLATIONS[lang]['token_issued'].format(est_wait, slot) + f" ({slot_type} - Dynamic Slot)"
 
-# Surveillance (#3)
-def simulate_monitoring(temple):
-    density = np.random.uniform(0.3, 0.9)
-    if density > 0.8:
-        panic = np.random.choice([True, False], p=[0.3, 0.7])
-        if panic:
-            alert = {'type': 'Panic Detected', 'location': np.random.choice(['Main Gate', 'Darshan Hall', 'Parking']), 'temple': temple, 'time': datetime.now(), 'severity': 'High'}
-            st.session_state.alerts.append(alert)
-            st.session_state.crowd_alert_sent = True
-            add_log(f"Live monitoring via CCTV + drones + sensors → AI detects crowd density. Panic detected at {alert['location']} in {temple} (#3)")
-            return alert, density
-    add_log(f"Live monitoring via CCTV + drones + sensors → AI detects crowd density. Normal at {temple} (#3)")
-    return None, density
-
-# Emergency (#4)
+# Emergency & Safety Module (#4)
 def trigger_emergency(temple, location):
-    add_log(f"Panic detection via AI-enabled CCTV (e.g., sudden rush or abnormal movement). Alerts local police & medical teams instantly at {location} in {temple} (#4)")
-    # Sim dispatch
+    add_log("Emergency & Safety Module")
+    add_log("Panic detection via AI-enabled CCTV (e.g., sudden rush or abnormal movement).")
+    add_log("Alerts local police & medical teams instantly.")
     st.session_state.dispatched_police = True
     st.session_state.dispatched_medical = True
+    add_log("Real-time panic detection")
+    add_log("Smart barricade systems")
+    add_log("AI-enabled first responder alerts")
+    add_log("Medical assistance mapping")
 
-# Traffic & Parking (#5)
+# Traffic & Parking System (#5)
 def get_parking_status(temple):
     base = TEMPLE_DATA[temple]['base_footfall']
     empty = np.random.randint(1, 10)
-    add_log(f"Smart parking guidance (IoT sensors detect empty spots, app directs cars). {empty}/10 spots empty at {temple} (#5)")
+    add_log("Traffic & Parking System")
+    add_log("Smart parking guidance (IoT sensors detect empty spots, app directs cars).")
+    add_log(f"Empty spots: {empty}/10")
     return empty
 
 def get_shuttle_status(temple):
     status = np.random.choice(['On Time', 'Delayed 5min', 'Police Coordinated'])
-    add_log(f"Shuttle/bus coordination integrated with police for smooth road management. Status: {status} at {temple} (#5)")
+    add_log("Shuttle/bus coordination integrated with police for smooth road management.")
+    add_log(f"Status: {status}")
     return status
 
-# Engagement (#6)
+# Pilgrim Engagement Platforms (#6)
 def get_engagement_info(temple):
     timings = "5AM-9PM"
     routes = "Gate → Hall → Exit"
     facilities = "Restrooms, Food, Medical"
     contacts = "Police 100, Medical 108"
-    add_log(f"Multilingual apps providing information on wait times, temple timings, routes, facilities, and emergency contacts. Info loaded for {temple} (#6)")
+    add_log("Pilgrim Engagement Platforms")
+    add_log("Multilingual apps providing information on wait times, temple timings, routes, facilities, and emergency contacts.")
+    add_log("Shows wait times, temple info, routes, facilities, SOS button, accessibility support.")
     return timings, routes, facilities, contacts
 
-# Accessibility (#7)
+# Accessibility Features (#7)
 def get_accessibility_support(temple, priority=False):
+    add_log("Accessibility Features")
+    add_log("Navigation assistance and priority services for elderly and differently-abled pilgrims.")
     if priority:
-        add_log(f"Special priority entry routes highlighted in app for elderly/differently-abled. Priority granted at {temple} (#7)")
-        return "Priority route active"
-    add_log(f"Navigation assistance and priority services for elderly and differently-abled pilgrims. Standard support at {temple} (#7)")
-    return "Standard navigation"
+        add_log("Special priority entry routes highlighted in app for elderly/differently-abled.")
+        return "Priority entry routes active"
+    return "Standard navigation support"
 
 def track_wheelchair(temple, user_id):
     location = np.random.choice(['Near Gate', 'Hall Area', 'Parking'])
     st.session_state.wheelchair_locations[user_id] = location
-    add_log(f"Smart wheelchairs (IoT-tracked for easy retrieval). Wheelchair {user_id} at {location} in {temple} (#7)")
+    add_log("Smart wheelchairs (IoT-tracked for easy retrieval).")
+    add_log(f"Wheelchair {user_id} at {location}")
     return location
 
 def coordinate_volunteer(temple, need):
     volunteer = np.random.choice(['Volunteer A', 'Volunteer B'])
-    add_log(f"Volunteer coordination via app to assist those in need. {volunteer} assigned for {need} at {temple} (#7)")
+    st.session_state.volunteers.append(volunteer)
+    add_log("Volunteer coordination via app to assist those in need.")
+    add_log(f"{volunteer} assigned for {need}")
     return volunteer
 
-# Map (Updated for all features)
+# Map (For all features)
 def create_map(temple, feature='parking'):
     data = TEMPLE_DATA[temple]
     m = folium.Map(location=[data['lat'], data['lng']], zoom_start=15)
@@ -418,9 +427,9 @@ def create_map(temple, feature='parking'):
         folium.Marker(spot, popup="Empty Parking", icon=folium.Icon(color='green')).add_to(m)
     folium.Marker([data['lat'], data['lng']], popup=f"{temple} Temple", icon=folium.Icon(color='red')).add_to(m)
     if feature == 'medical':
-        folium.Marker([data['lat'] - 0.002, data['lng'] + 0.002], popup="Medical Assistance Mapping (#4)", icon=folium.Icon(color='orange')).add_to(m)
+        folium.Marker([data['lat'] - 0.002, data['lng'] + 0.002], popup="Medical Center", icon=folium.Icon(color='orange')).add_to(m)
     if feature == 'drone' and st.session_state.drone_dispatched:
-        folium.Marker([data['lat'] + 0.0015, data['lng'] - 0.0005], popup="SOS Drone Dispatch w/ Camera/Speaker/First-Aid Kit (#4)", icon=folium.Icon(color='blue')).add_to(m)
+        folium.Marker([data['lat'] + 0.0015, data['lng'] - 0.0005], popup="Drone w/ Kit", icon=folium.Icon(color='blue')).add_to(m)
     if feature == 'wheelchair':
         for user, loc in st.session_state.wheelchair_locations.items():
             folium.Marker([data['lat'] + np.random.uniform(-0.001, 0.001), data['lng'] + np.random.uniform(-0.001, 0.001)], popup=f"Smart Wheelchair {user} Retrieval (#7)", icon=folium.Icon(color='purple')).add_to(m)
@@ -445,7 +454,7 @@ temple = st.sidebar.selectbox(t['select_temple'], list(TEMPLE_DATA.keys()))
 role = st.sidebar.selectbox(t['view_as'], [t['pilgrim_app'], t['authority_dashboard']])
 live_mode = st.sidebar.checkbox(t['live_mode'])
 if live_mode:
-    time.sleep(2)  # Shorter for demo
+    time.sleep(5)
     st.rerun()
 st.sidebar.title(f"{t['title']} - {temple}")
 
@@ -453,6 +462,7 @@ st.sidebar.title(f"{t['title']} - {temple}")
 st.sidebar.header("Demo Integrations")
 if st.sidebar.button('Sim Surge: #1 → #2 (Limit Slots)'):
     st.session_state.surge_active = True
+    add_log("Surge sim activated - Queues capped")
     st.rerun()
 if st.sidebar.button('Sim Crowded: #3 → #4 → #6 (Alert App)'):
     simulate_monitoring(temple)
@@ -461,11 +471,7 @@ if st.sidebar.button('Sim Wheelchair Track (#7)'):
     track_wheelchair(temple, np.random.randint(1, 10))
     st.rerun()
 if st.sidebar.button('Sim Volunteer Coord (#7)'):
-    coordinate_volunteer(temple, "elderly assist")
-    st.rerun()
-if st.sidebar.button('Kiosk Mode Toggle (#2)'):
-    st.session_state.kiosk_mode = not st.session_state.get('kiosk_mode', False)
-    add_log("Kiosk mode toggled for virtual queue management via mobile apps and kiosks (#2)")
+    coordinate_volunteer(temple, np.random.choice(['elderly assist', 'differently-abled support']))
     st.rerun()
 
 st.title(f"{t['title']} - {temple}")
@@ -473,11 +479,7 @@ st.title(f"{t['title']} - {temple}")
 # Live Footfall Counter (#1)
 pred_df = predict_crowd(temple, 1)
 st.session_state.live_footfall += np.random.randint(50, 200)
-st.metric(t['current_footfall'], f"{st.session_state.live_footfall:,}", delta=f"+{np.random.randint(50, 200)}/min", help="AI/ML-based Crowd Prediction Models – Forecasting visitor surges based on historical data, weather, holidays, and festival calendars (#1)")
-
-# Kiosk Mode Sim (#2)
-if st.session_state.get('kiosk_mode', False):
-    st.info("Kiosk Mode Active: A mobile app/kiosk system lets devotees book digital tokens/darshan slots (#2)")
+st.metric(t['current_footfall'], f"{st.session_state.live_footfall:,}", delta=f"+{np.random.randint(50, 200)}/min", help="Live from Sensors")
 
 if role == t['pilgrim_app']:
     tabs = st.tabs([t['home_info'], t['join_queue'], t['sos_nav'], t['surveillance'], t['traffic'], t['accessibility'], t['medical_map']])
@@ -506,7 +508,7 @@ if role == t['pilgrim_app']:
     with tabs[1]:  # #2 Full
         st.header(f"{t['virtual_darshan']} - {temple}")
         st.info(t['dynamic_slots'])
-        priority = st.checkbox(t['elderly_priority'])
+        priority = st.checkbox(t['elderly_priority'], key=f"priority_checkbox_{temple}")
         if st.button(t['join_btn'], use_container_width=True):
             user_id = len(st.session_state.queue_data) + 1
             msg = join_queue(temple, user_id, priority, lang)
@@ -572,16 +574,17 @@ if role == t['pilgrim_app']:
         st.dataframe(schedule.style.highlight_max(axis=0))
         st.subheader(t['traffic_flow'])
         flow = np.random.choice(['Smooth', 'Moderate', 'Congested'])
-        st.metric("Flow Status", flow, "Intelligent parking guidance, shuttle/bus coordination, and dynamic traffic flow systems integrated with city police (#5)")
+        st.metric("Flow Status", flow, "Police Dynamic System")
         st.info(t['iot_parking'])
         st.info(t['shuttle_police'])
         st_folium(create_map(temple, 'parking'), width=700, height=500, key=f"traffic_map_{temple}")
     
     with tabs[5]:  # #7 Full
         st.header(f"{t['voice_nav']} - {temple}")
-        priority = st.checkbox(t['elderly_priority'])
-        support = get_accessibility_support(temple, priority)
-        st.info(support)
+        priority = st.checkbox(t['elderly_priority'], key=f"priority_checkbox_{temple}")
+        if priority:
+            support = get_accessibility_support(temple, priority)
+            st.info(support)
         if st.button('Start Voice-Guided Mode (#7)'):
             st.info(t['audio_sim'])
             st.audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcDbiIAA==", format="audio/wav")
@@ -594,24 +597,24 @@ if role == t['pilgrim_app']:
             need = st.text_input("Need (e.g., elderly assist)")
             volunteer = coordinate_volunteer(temple, need)
             st.success(f"{t['volunteer_assist']}: {volunteer}")
-        st_folium(create_map(temple, 'priority'), width=700, height=500, key=f"accessibility_map_{temple}")
+        st_folium(create_map(temple, 'wheelchair'), width=700, height=500, key=f"access_map_{temple}")
     
     with tabs[6]:  # #4 Medical
         st.header(f"{t['medical_map']} - {temple}")
         st_folium(create_map(temple, 'medical'), width=700, height=500, key=f"medical_map_{temple}")
-        st.info("Medical assistance mapping for quick response (#4)")
+        st.info("Nearest Aid: 200m - Mapped for Quick Response.")
 
 elif role == t['authority_dashboard']:
     tabs = st.tabs([t['prediction'], t['surveillance'], t['active_queues'], t['barricades'], t['traffic'], 'Engagement (#6)', t['accessibility']])
     
-    with tabs[0]:  # #1 Full
+    with tabs[0]:  # #1
         st.header(f"{t['prediction']} - {temple}")
         pred_df = predict_crowd(temple, 7)
         if not pred_df.empty:
             st.dataframe(pred_df.style.background_gradient(cmap='YlOrRd'))
             fig, ax = plt.subplots(figsize=(10,5))
             bars = ax.bar([d.strftime('%Y-%m-%d') for d in pred_df['date']], pred_df['predicted_footfall'], color='orange')
-            ax.set_title(f'AI-based Crowd Prediction & Monitoring: Forecast visitor surges based on historical + weather + festival calendar data (#1)')
+            ax.set_title(f'Surge Forecast - {temple} (#1: Historical/Weather/Holidays/Festivals)')
             plt.xticks(rotation=45)
             st.pyplot(fig)
             high_surge = pred_df[pred_df['predicted_footfall'] > TEMPLE_DATA[temple]['base_footfall'] * 2]
@@ -619,7 +622,7 @@ elif role == t['authority_dashboard']:
                 st.warning(t['surge_alert'].format(high_surge['date'].iloc[0].strftime('%Y-%m-%d')))
                 st.session_state.surge_active = True
     
-    with tabs[1]:  # #3 Full
+    with tabs[1]:  # #3
         st.header(f"{t['surveillance']} - {temple}")
         col1, col2 = st.columns(2)
         with col1:
@@ -627,7 +630,6 @@ elif role == t['authority_dashboard']:
                 alert, density = simulate_monitoring(temple)
                 fig, ax = plt.subplots()
                 ax.pie([density, 1-density], labels=[t['crowded'], t['safe']], autopct='%1.1f%%', colors=['#ff6b6b', '#4ecdc4'])
-                ax.set_title('Sensors, CCTV with AI analytics, and drones for crowd density monitoring and automated alerts (#3)')
                 st.pyplot(fig)
         with col2:
             st.metric("IoT Sensors", f"{density*100:.0f}% Density")
@@ -672,38 +674,34 @@ elif role == t['authority_dashboard']:
         st.dataframe(schedule)
         st.subheader(t['traffic_flow'])
         light = np.random.choice(['🟢 Green', '🟡 Yellow', '🔴 Red'])
-        st.metric("Flow", light, "Traffic & Parking System (#5)")
+        st.metric("Flow", light, "City Police System")
     
-    with tabs[5]:  # #7 Full
-    st.header(f"{t['voice_nav']} - {temple}")
-    priority = st.checkbox(t['elderly_priority'], key=f"pilgrim_priority_{temple}")  # Fixed: Added key
-    support = get_accessibility_support(temple, priority)
-    st.info(support)
-    if st.button('Start Voice-Guided Mode (#7)'):
-        st.info(t['audio_sim'])
-        st.audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcDbiIAA==", format="audio/wav")
-    st.info(t['priority_entry'])
-    if st.button('Track Smart Wheelchair (#7)'):
-        user_id = np.random.randint(1, 10)
-        location = track_wheelchair(temple, user_id)
-        st.info(f"{t['smart_wheelchair_retrieval']}: {location}")
-    if st.button('Request Volunteer Assist (#7)'):
-        need = st.text_input("Need (e.g., elderly assist)")
-        volunteer = coordinate_volunteer(temple, need)
-        st.success(f"{t['volunteer_assist']}: {volunteer}")
-    st_folium(create_map(temple, 'wheelchair'), width=700, height=500, key=f"auth_access_map_{temple}")
+    with tabs[5]:  # #6
+        st.header(f"Pilgrim Engagement Platforms (#6) - {temple}")
+        timings, routes, facilities, contacts = get_engagement_info(temple)
+        col1, col2, col3 = st.columns(3)
+        q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple])
+        col1.metric("Wait Times", f"{np.mean(q_df['est_wait']):.0f} min Avg" if not q_df.empty else "N/A")
+        col2.metric("Notifications Sent", st.session_state.crowd_alert_sent + st.session_state.surge_active)
+        col3.metric("Active Pilgrims", len(q_df))
+        st.info(f"{t['temple_timings']}: {timings}")
+        st.info(f"{t['routes']}: {routes}")
+        st.info(f"{t['facilities']}: {facilities}")
+        st.info(f"{t['emergency_contacts']}: {contacts}")
     
     with tabs[6]:  # #7
         st.header(f"{t['accessibility']} - {temple}")
-        st.checkbox("Enable Priority Queues (#7)")
-        if st.button("Broadcast Voice Nav (#7)"):
-            st.success("Voice Guide Sent to All Devices (#7)")
+        priority = st.checkbox(t['elderly_priority'], key=f"auth_priority_checkbox_{temple}")
+        support = get_accessibility_support(temple, priority)
+        st.info(support)
+        if st.button('Start Voice-Guided Mode (#7)'):
             st.info(t['audio_sim'])
+            st.audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcDbiIAA==", format="audio/wav")
         st.info(t['priority_entry'])
         if st.button('Track Smart Wheelchair (#7)'):
             user_id = np.random.randint(1, 10)
             location = track_wheelchair(temple, user_id)
-            st.info(f"{t['smart_wheelchair']}: {location}")
+            st.info(f"{t['smart_wheelchair_retrieval']}: {location}")
         if st.button('Request Volunteer Assist (#7)'):
             need = st.text_input("Need (e.g., elderly assist)")
             volunteer = coordinate_volunteer(temple, need)
