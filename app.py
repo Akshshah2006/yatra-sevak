@@ -5,19 +5,19 @@ from sklearn.ensemble import RandomForestRegressor
 from datetime import datetime, timedelta, date
 import matplotlib.pyplot as plt
 import folium
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium  # Updated from folium_static
 from sklearn.model_selection import train_test_split
-import time  # For sim delays
+import time
 
-# Temple Data (unchanged)
+# Temple Data
 TEMPLE_DATA = {
     'Somnath': {'lat': 20.888, 'lng': 70.401, 'base_footfall': 50000},
     'Dwarka': {'lat': 22.238, 'lng': 68.968, 'base_footfall': 25000},
     'Ambaji': {'lat': 24.333, 'lng': 72.850, 'base_footfall': 25000},
     'Pavagadh': {'lat': 22.461, 'lng': 73.512, 'base_footfall': 6000}
 }
-# Hardcoded Multilingual Support (Expanded)
-# Fix: Define English first, then copy for others
+
+# TRANSLATIONS (Full, Fixed)
 english_trans = {
     'title': '🛕 Yatra Sevak: Multi-Temple Management (4 Sites)',
     'select_temple': 'Select Temple',
@@ -30,7 +30,7 @@ english_trans = {
     'prediction': 'AI Crowd Prediction (#1)',
     'pilgrim_app': 'Pilgrim View',
     'authority_dashboard': 'Authority Dashboard',
-    'language': 'Language / ભાષા / भाषा',
+    'language': 'Language / ભાષા / भाषા',
     'view_as': 'View As',
     'live_mode': 'Live Mode (Auto-Update)',
     'temple_info_wait': 'Engagement: Timings, Routes, Facilities (#6)',
@@ -196,7 +196,7 @@ TRANSLATIONS = {
     }
 }
 
-# Session State (Add live counters)
+# Session State
 if 'queue_data' not in st.session_state: st.session_state.queue_data = []
 if 'alerts' not in st.session_state: st.session_state.alerts = []
 if 'surge_active' not in st.session_state: st.session_state.surge_active = False
@@ -211,7 +211,7 @@ def add_log(msg):
     st.session_state.log_entries.append(f"[{timestamp}] {msg}")
     if len(st.session_state.log_entries) > 10: st.session_state.log_entries.pop(0)
 
-# Model & Predict (Updated for Oct 4)
+# Model (Fix: is_holiday to int)
 @st.cache_data
 def load_and_train_model(base_footfall):
     np.random.seed(42)
@@ -221,6 +221,7 @@ def load_and_train_model(base_footfall):
     is_festival = [1 if d.strftime('%Y-%m-%d') in festivals else 0 for d in dates]
     temp = np.random.normal(28, 5, n).clip(15, 40)
     is_holiday = [(d.weekday() >= 5) or isf for d, isf in zip(dates, is_festival)]
+    is_holiday = pd.Series(is_holiday).astype(int)  # Fix: int for Arrow
     festival_boost = np.array(is_festival) * (base_footfall * 2)
     holiday_boost = np.array(is_holiday) * (base_footfall * 0.2)
     weather_factor = (30 - temp) / 10
@@ -243,12 +244,13 @@ def predict_crowd(temple, days_ahead=7):
     data = TEMPLE_DATA[temple]
     model, features, _ = load_and_train_model(data['base_footfall'])
     try:
-        today = date(2025, 10, 4)  # Oct 4, 2025
+        today = date(2025, 10, 4)
         future_dates = pd.date_range(start=today, periods=days_ahead, freq='D')
         future_n = len(future_dates)
         future_temp = np.random.normal(28, 5, future_n).clip(15, 40)
         future_fest = [1 if d.strftime('%Y-%m-%d') in ['2025-10-20', '2025-11-01', '2025-11-15'] else 0 for d in future_dates]
         future_hol = [(d.weekday() >= 5) or ff for d, ff in zip(future_dates, future_fest)]
+        future_hol = pd.Series(future_hol).astype(int)  # Fix: int
         future_df = pd.DataFrame({'date': future_dates, 'temperature': future_temp, 'is_festival': future_fest, 'is_holiday': future_hol})
         future_df['month'] = future_df['date'].dt.month
         future_df['dayofweek'] = future_df['date'].dt.dayofweek
@@ -260,7 +262,7 @@ def predict_crowd(temple, days_ahead=7):
         st.error(f"Prediction error: {e}")
         return pd.DataFrame()
 
-# Queue (unchanged, but add log)
+# Queue
 def join_queue(temple, user_id, priority=False, lang='English'):
     now = datetime.now()
     pred_df = predict_crowd(temple, 1)
@@ -276,9 +278,10 @@ def join_queue(temple, user_id, priority=False, lang='English'):
     add_log(f"Queue joined: User {user_id} at {temple}")
     return TRANSLATIONS[lang]['token_issued'].format(est_wait, slot) + f" ({slot_type} - Dynamic Slot)"
 
-# Surveillance (#3 + Real-Time)
+# Surveillance (Call on load for defaults)
 def simulate_monitoring(temple):
-    st.session_state.density = np.random.uniform(0.3, 0.9)  # Fluctuate
+    st.session_state.density = np.random.uniform(0.3, 0.9)
+    alert = None
     if st.session_state.density > 0.8:
         panic_chance = np.random.choice([True, False], p=[0.4, 0.6])
         if panic_chance:
@@ -286,10 +289,9 @@ def simulate_monitoring(temple):
             st.session_state.alerts.append(alert)
             st.session_state.crowd_alert_sent = True
             add_log(f"Panic alert: {alert['location']} at {temple}")
-            return alert, st.session_state.density
-    return None, st.session_state.density
+    return alert, st.session_state.density
 
-# Map (with Drone Path Sim)
+# Map (st_folium)
 def create_map(temple, feature='parking'):
     data = TEMPLE_DATA[temple]
     m = folium.Map(location=[data['lat'], data['lng']], zoom_start=15)
@@ -300,7 +302,6 @@ def create_map(temple, feature='parking'):
     if feature == 'medical':
         folium.Marker([data['lat'] - 0.002, data['lng'] + 0.002], popup="Medical Center", icon=folium.Icon(color='orange')).add_to(m)
     if feature == 'drone' and st.session_state.drone_dispatched:
-        # Sim moving drone (polyline path)
         drone_path = [[data['lat'], data['lng']], [data['lat'] + 0.002, data['lng'] - 0.001], [data['lat'] + 0.001, data['lng'] + 0.001]]
         folium.PolyLine(drone_path, color="blue", weight=2.5, popup="Drone Patrol Path").add_to(m)
         folium.Marker(drone_path[-1], popup="Drone Live Pos w/ Kit", icon=folium.Icon(color='blue')).add_to(m)
@@ -323,8 +324,8 @@ temple = st.sidebar.selectbox(t['select_temple'], list(TEMPLE_DATA.keys()))
 role = st.sidebar.selectbox(t['view_as'], [t['pilgrim_app'], t['authority_dashboard']])
 live_mode = st.sidebar.checkbox(t['live_mode'])
 if live_mode:
-    time.sleep(5)  # Sim delay
-    st.rerun()  # Auto-refresh for "live"
+    time.sleep(5)
+    st.rerun()
 st.sidebar.title(f"{t['title']} - {temple}")
 
 # Sidebar Sims
@@ -339,15 +340,15 @@ if st.sidebar.button('Sim Crowded: #3 → #4 → #6 (Alert App)'):
 
 st.title(f"{t['title']} - {temple}")
 
-# Live Footfall Counter (#1)
+# Live Footfall Counter
 pred_df = predict_crowd(temple, 1)
-st.session_state.live_footfall += np.random.randint(50, 200)  # Ticks up
+st.session_state.live_footfall += np.random.randint(50, 200)
 st.metric(t['current_footfall'], f"{st.session_state.live_footfall:,}", delta=f"+{np.random.randint(50, 200)}/min", help="Live from Sensors")
 
 if role == t['pilgrim_app']:
     tabs = st.tabs([t['home_info'], t['join_queue'], t['sos_nav'], t['surveillance'], t['traffic'], t['accessibility'], t['medical_map']])
     
-    with tabs[0]:  # #6 + Weather Update
+    with tabs[0]:  # #6
         st.header(f"{t['temple_info_wait']} - {temple}")
         if not pred_df.empty:
             st.dataframe(pred_df[['date', 'predicted_footfall']].style.background_gradient(cmap='Blues'))
@@ -356,9 +357,9 @@ if role == t['pilgrim_app']:
         with col2: st.info(f"🏥 {t['facilities']}")
         with col3: st.error(f"📞 {t['emergency_contacts']}")
         st.info(f"🗺️ {t['routes']}")
-        weather_temp = np.random.normal(28, 2)  # "Live" variance
+        weather_temp = np.random.normal(28, 2)
         st.info(t['current_weather'].format(weather_temp))
-        folium_static(create_map(temple, 'parking'))
+        st_folium(create_map(temple, 'parking'), width=700, height=500)  # Fixed
         if st.session_state.surge_active:
             st.warning(t['surge_alert'].format('peak hours'))
         if st.session_state.crowd_alert_sent:
@@ -395,18 +396,17 @@ if role == t['pilgrim_app']:
             st.session_state.drone_dispatched = True
             add_log("SOS drone dispatched to remote area")
             st.success(t['drone_dispatch'])
-            folium_static(create_map(temple, 'drone'))
+            st_folium(create_map(temple, 'drone'), width=700, height=500)  # Fixed
     
-    with tabs[3]:  # #3 CCTV + Drone
+    with tabs[3]:  # #3
         st.header(f"{t['surveillance']} - {temple}")
         col1, col2 = st.columns(2)
         with col1:
             st.subheader(t['cctv_feed'])
-            # Fake Live CCTV: Looping temple video (free stock; fallback plot)
+            # Fake Live CCTV
             try:
-                st.video("https://archive.org/download/TempleCrowdSim/TempleCrowdLoop.mp4")  # Replace with real URL if needed
+                st.video("https://archive.org/download/TempleCrowdSim/TempleCrowdLoop.mp4")
             except:
-                # Fallback animated density plot
                 fig, ax = plt.subplots(figsize=(6,4))
                 circle = plt.Circle((0.5, 0.5), st.session_state.density, color='red', alpha=0.5)
                 ax.add_patch(circle)
@@ -423,13 +423,13 @@ if role == t['pilgrim_app']:
                 ax.set_title('Drone Analytics (#3)')
                 st.pyplot(fig)
                 st.metric("Drones Active", "4/5", delta="Patrolling")
-            if alert:
+            st_folium(create_map(temple, 'drone'), width=700, height=500)  # Fixed
+            if 'alert' in locals() and alert:  # Fixed: Check local var
                 st.error(t['panic_detected'].format(alert['location']))
-            folium_static(create_map(temple, 'drone'))
     
-    with tabs[4]:  # #5 (Add fluctuating flow)
+    with tabs[4]:  # #5
         st.header(f"{t['parking_mobility']} - {temple}")
-        folium_static(create_map(temple, 'parking'))
+        st_folium(create_map(temple, 'parking'), width=700, height=500)  # Fixed
         data = TEMPLE_DATA[temple]
         st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))
         st.subheader(t['shuttle_schedule'])
@@ -441,19 +441,19 @@ if role == t['pilgrim_app']:
         })
         st.dataframe(schedule.style.highlight_max(axis=0))
         st.subheader(t['traffic_flow'])
-        flow = np.random.choice(['Smooth', 'Moderate', 'Congested'])  # Fluctuates in live mode
+        flow = np.random.choice(['Smooth', 'Moderate', 'Congested'])
         st.metric("Flow Status", flow, "Police Dynamic System")
     
     with tabs[5]:  # #7
         st.header(f"{t['voice_nav']} - {temple}")
         if st.button('Start Voice-Guided Mode (#7)'):
             st.info(t['audio_sim'])
-            st.audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcDbiIAA==", format="audio/wav")  # Beep sim
+            st.audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcDbiIAA==", format="audio/wav")
         st.info("AR Navigation Sim: Priority route highlighted for disabled.")
     
     with tabs[6]:  # #4 Medical
         st.header(f"{t['medical_map']} - {temple}")
-        folium_static(create_map(temple, 'medical'))
+        st_folium(create_map(temple, 'medical'), width=700, height=500)  # Fixed
         st.info("Nearest Aid: 200m - Mapped for Quick Response.")
 
 elif role == t['authority_dashboard']:
@@ -498,8 +498,8 @@ elif role == t['authority_dashboard']:
             st.metric("IoT Sensors", f"{st.session_state.density*100:.0f}% Density")
             st.metric("CCTV Feeds", "Live", "AI Analytics")
             st.metric("Drones", "4/5 Deployed", "Auto Patrol")
-            folium_static(create_map(temple, 'drone'))
-        if alert:
+            st_folium(create_map(temple, 'drone'), width=700, height=500)  # Fixed
+        if 'alert' in locals() and alert:  # Fixed: Check local var
             st.error(t['panic_detected'].format(alert['location']))
             st.session_state.crowd_alert_sent = True
     
@@ -526,7 +526,7 @@ elif role == t['authority_dashboard']:
     
     with tabs[4]:  # #5
         st.header(f"{t['parking_mobility']} - {temple}")
-        folium_static(create_map(temple, 'parking'))
+        st_folium(create_map(temple, 'parking'), width=700, height=500)  # Fixed
         data = TEMPLE_DATA[temple]
         st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))
         st.subheader(t['shuttle_schedule'])
@@ -557,9 +557,9 @@ elif role == t['authority_dashboard']:
             add_log("Voice nav broadcasted")
             st.info(t['audio_sim'])
 
-# Live Log (Bottom for All)
+# Live Log
 with st.expander(t['live_log']):
-    for entry in st.session_state.log_entries[-5:]:  # Last 5
+    for entry in st.session_state.log_entries[-5:]:
         st.write(entry)
 
 st.markdown("---")
