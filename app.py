@@ -17,7 +17,26 @@ TEMPLE_DATA = {
     'Pavagadh': {'lat': 22.461, 'lng': 73.512, 'base_footfall': 6000}
 }
 
-# TRANSLATIONS (Full, Fixed - SyntaxError Fixed: Closed all strings)
+import streamlit as st
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor
+from datetime import datetime, timedelta, date
+import matplotlib.pyplot as plt
+import folium
+from streamlit_folium import st_folium
+from sklearn.model_selection import train_test_split
+import time
+
+# Temple Data
+TEMPLE_DATA = {
+    'Somnath': {'lat': 20.888, 'lng': 70.401, 'base_footfall': 50000},
+    'Dwarka': {'lat': 22.238, 'lng': 68.968, 'base_footfall': 25000},
+    'Ambaji': {'lat': 24.333, 'lng': 72.850, 'base_footfall': 25000},
+    'Pavagadh': {'lat': 22.461, 'lng': 73.512, 'base_footfall': 6000}
+}
+
+# TRANSLATIONS (Full, Fixed)
 english_trans = {
     'title': '🛕 Yatra Sevak: Multi-Temple Management (4 Sites)',
     'select_temple': 'Select Temple',
@@ -65,15 +84,7 @@ english_trans = {
     'routes': 'Routes: Gate → Hall → Exit (#6)',
     'medical_map': 'Medical Mapping (#4)',
     'barricades': 'Smart Barricades (#4)',
-    'drone_dispatch': 'Drone Dispatched w/ Camera/Speaker/Kit (#4)',
-    'dynamic_slots': 'Dynamic Slots: Free if Low Demand (#2)',
-    'voice_nav': 'Voice Mode for Visually Impaired (#7)',
-    'shuttle_schedule': 'Shuttle Coordination (#5)',
-    'traffic_flow': 'Dynamic Traffic (#5)',
-    'live_log': 'Live Event Log',
-    'cctv_feed': 'Live CCTV Feed (#3)',
-    'drone_view': 'Drone Patrol View (#3/#4)',
-    'current_footfall': 'Live Footfall Counter (#1)'
+    'drone_dispatch': 'Drone Dispatched
 }
 
 TRANSLATIONS = {
