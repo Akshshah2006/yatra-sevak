@@ -674,18 +674,24 @@ elif role == t['authority_dashboard']:
         light = np.random.choice(['🟢 Green', '🟡 Yellow', '🔴 Red'])
         st.metric("Flow", light, "Traffic & Parking System (#5)")
     
-    with tabs[5]:  # #6
-        st.header(f"Pilgrim Engagement Platforms (#6) - {temple}")
-        timings, routes, facilities, contacts = get_engagement_info(temple)
-        col1, col2, col3 = st.columns(3)
-        q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple])
-        col1.metric("Wait Times", f"{np.mean(q_df['est_wait']):.0f} min Avg" if not q_df.empty else "N/A")
-        col2.metric("Notifications Sent", st.session_state.crowd_alert_sent + st.session_state.surge_active)
-        col3.metric("Active Pilgrims", len(q_df))
-        st.info(f"{t['temple_timings']}: {timings}")
-        st.info(f"{t['routes']}: {routes}")
-        st.info(f"{t['facilities']}: {facilities}")
-        st.info(f"{t['emergency_contacts']}: {contacts}")
+    with tabs[5]:  # #7 Full
+    st.header(f"{t['voice_nav']} - {temple}")
+    priority = st.checkbox(t['elderly_priority'], key=f"pilgrim_priority_{temple}")  # Fixed: Added key
+    support = get_accessibility_support(temple, priority)
+    st.info(support)
+    if st.button('Start Voice-Guided Mode (#7)'):
+        st.info(t['audio_sim'])
+        st.audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcDbiIAA==", format="audio/wav")
+    st.info(t['priority_entry'])
+    if st.button('Track Smart Wheelchair (#7)'):
+        user_id = np.random.randint(1, 10)
+        location = track_wheelchair(temple, user_id)
+        st.info(f"{t['smart_wheelchair_retrieval']}: {location}")
+    if st.button('Request Volunteer Assist (#7)'):
+        need = st.text_input("Need (e.g., elderly assist)")
+        volunteer = coordinate_volunteer(temple, need)
+        st.success(f"{t['volunteer_assist']}: {volunteer}")
+    st_folium(create_map(temple, 'wheelchair'), width=700, height=500, key=f"auth_access_map_{temple}")
     
     with tabs[6]:  # #7
         st.header(f"{t['accessibility']} - {temple}")
