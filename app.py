@@ -57,7 +57,7 @@ english_trans = {
     'dispatched': 'Dispatched! (Police/Medical).',
     'parking_mobility': 'Parking Guidance & Shuttle ',
     'empty_spots': 'Empty Spots: {}/10. Police-Integrated Flow.',
-    'footer': 'Scalable to 4 Temples: Ambaji, Dwarka, Pavagadh, Somnath.,
+    'footer': 'Scalable to 4 Temples: Ambaji, Dwarka, Pavagadh, Somnath. All 7 Features Integrated. ❤️',
     'predicted_crowd': 'Predicted Footfall ',
     'temple_timings': 'Timings: 5AM-9PM ',
     'facilities': 'Facilities: Restrooms, Food, Medical ',
