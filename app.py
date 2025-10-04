@@ -7,12 +7,9 @@ import matplotlib.pyplot as plt
 import folium
 from streamlit_folium import folium_static
 from sklearn.model_selection import train_test_split
-import requests  # Added for real weather integration
+import requests
 import io
-import time  # For potential real-time elements
 
-# Enhanced Temple Data with Updated Base Footfall from Real Estimates (Annual / 365)
-# Sources: Gujarat Tourism data ~ Somnath: 9.79M annual (~26800 daily), Dwarka: 8.35M (~22900), Ambaji: 16.46M (~45100), Pavagadh: 7.66M (~21000)
 TEMPLE_DATA = {
     'Somnath': {'lat': 20.888, 'lng': 70.401, 'base_footfall': 26800},
     'Dwarka': {'lat': 22.238, 'lng': 68.968, 'base_footfall': 22900},
@@ -20,7 +17,6 @@ TEMPLE_DATA = {
     'Pavagadh': {'lat': 22.461, 'lng': 73.512, 'base_footfall': 21000}
 }
 
-# Multilingual Translations (Professionalized with Consistent Formatting)
 english_trans = {
     'title': '🛕 Yatra Sevak: Professional Multi-Temple Management System (4 Sites)',
     'select_temple': 'Select Temple',
@@ -75,20 +71,12 @@ english_trans = {
     'refresh_queue': 'Refresh Queue Status'
 }
 
-# Translations for Gujarati and Hindi (Updated Similarly for Professional Tone)
 TRANSLATIONS = {
     'English': english_trans,
-    'Gujarati': {**english_trans,  # Override with Gujarati translations (similar to previous)
-        'title': '🛕 યાત્રા સેવક: વ્યાવસાયિક મલ્ટી-મંદિર વ્યવસ્થાપન સિસ્ટમ (4 સ્થળો)',
-        # ... (rest similar, updated for professionalism)
-    },
-    'Hindi': {**english_trans,
-        'title': '🛕 यात्रा सेवक: व्यावसायिक मल्टी-मंदिर प्रबंधन प्रणाली (4 स्थल)',
-        # ... (rest similar)
-    }
+    'Gujarati': english_trans,  # Placeholder, add real translations as needed
+    'Hindi': english_trans  # Placeholder, add real translations as needed
 }
 
-# Session State Management (Professionalized with Error Handling)
 if 'queue_data' not in st.session_state: st.session_state.queue_data = []
 if 'alerts' not in st.session_state: st.session_state.alerts = []
 if 'surge_active' not in st.session_state: st.session_state.surge_active = False
@@ -98,20 +86,10 @@ if 'density' not in st.session_state: st.session_state.density = 0.0
 if 'alert' not in st.session_state: st.session_state.alert = None
 if 'user_id' not in st.session_state: st.session_state.user_id = None
 
-# Updated Festival List for 2025 (From Real Calendars: Makar Sankranti, Maha Shivratri, Navratri, Diwali, etc.)
 FESTIVALS_2025 = [
-    '2025-01-14',  # Makar Sankranti
-    '2025-02-26',  # Maha Shivratri
-    '2025-03-14',  # Holi
-    '2025-04-06',  # Ram Navami
-    '2025-09-23',  # Navratri Start
-    '2025-10-02',  # Dussehra
-    '2025-10-20',  # Diwali
-    '2025-11-05',  # Dev Diwali
-    '2025-11-15'   # Additional from sources
+    '2025-01-14', '2025-02-26', '2025-03-14', '2025-04-06', '2025-09-23', '2025-10-02', '2025-10-20', '2025-11-05', '2025-11-15'
 ]
 
-# Function to Fetch Real Weather Forecast (Using Open-Meteo Free API - Professional Integration)
 def fetch_weather_forecast(lat, lng, days_ahead=7):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lng}&daily=temperature_2m_mean&timezone=Asia/Kolkata&forecast_days={days_ahead}"
     try:
@@ -125,14 +103,13 @@ def fetch_weather_forecast(lat, lng, days_ahead=7):
         st.warning(f"Weather API Error: {e}. Falling back to simulation.")
         return pd.DataFrame({'date': pd.date_range(start=date.today(), periods=days_ahead), 'temperature': np.random.normal(28, 5, days_ahead).clip(15, 40)})
 
-# AI Model Training (#1 - Refined with Real Weather Integration and Updated Festivals)
 @st.cache_data
 def load_and_train_model(base_footfall):
     np.random.seed(42)
     dates = pd.date_range(start='2024-01-01', end='2026-01-01', freq='D')
     n = len(dates)
     is_festival = [1 if d.strftime('%Y-%m-%d') in FESTIVALS_2025 else 0 for d in dates]
-    temp = np.random.normal(28, 5, n).clip(15, 40)  # Simulated historical weather
+    temp = np.random.normal(28, 5, n).clip(15, 40)
     is_holiday = [(d.weekday() >= 5) or isf for d, isf in zip(dates, is_festival)]
     festival_boost = np.array(is_festival) * (base_footfall * 2)
     holiday_boost = np.array(is_holiday) * (base_footfall * 0.2)
@@ -168,7 +145,6 @@ def predict_crowd(temple, days_ahead=7):
     future_df['predicted_footfall'] = predictions
     return future_df
 
-# Queue Management (#2 - Enhanced with Real-Time Progress and Dynamic Pricing)
 def join_queue(temple, user_id, priority=False, lang='English'):
     now = datetime.now()
     pred_df = predict_crowd(temple, 1)
@@ -177,14 +153,13 @@ def join_queue(temple, user_id, priority=False, lang='English'):
     surge_penalty = 60 if (not pred_df.empty and pred_df['predicted_footfall'].iloc[0] > surge_threshold) else 0
     base_wait = np.random.randint(30, 120)
     est_wait = base_wait + (0 if priority else 15) - surge_penalty
-    est_wait = max(10, est_wait)  # Minimum wait for realism
+    est_wait = max(10, est_wait)
     slot = (now + timedelta(minutes=est_wait)).strftime('%H:%M')
-    slot_type = 'Free' if est_wait < 45 else 'Paid (₹50)'  # Added pricing for professionalism
+    slot_type = 'Free' if est_wait < 45 else 'Paid (₹50)'
     entry = {'temple': temple, 'user_id': user_id, 'join_time': now, 'priority': priority, 'lang': lang, 'slot': slot, 'status': 'Waiting', 'est_wait': est_wait, 'slot_type': slot_type}
     st.session_state.queue_data.append(entry)
     return TRANSLATIONS[lang]['token_issued'].format(est_wait, slot) + f" ({slot_type})"
 
-# Surveillance (#3 - Refined with Better Visualization)
 def simulate_monitoring(temple):
     density = np.random.uniform(0.3, 0.9)
     alert = None
@@ -195,10 +170,9 @@ def simulate_monitoring(temple):
             st.session_state.crowd_alert_sent = True
     return alert, density
 
-# Map Creation (#4, #5 - Enhanced Markers)
 def create_map(temple, feature='parking'):
     data = TEMPLE_DATA[temple]
-    m = folium.Map(location=[data['lat'], data['lng']], zoom_start=15, tiles='CartoDB positron')  # Professional tiles
+    m = folium.Map(location=[data['lat'], data['lng']], zoom_start=15, tiles='CartoDB positron')
     folium.Marker([data['lat'], data['lng']], popup=f"{temple} Temple", icon=folium.Icon(color='red', icon='cloud')).add_to(m)
     if feature == 'parking':
         spots = [(data['lat'] + 0.001, data['lng'] + 0.001), (data['lat'] - 0.001, data['lng'] - 0.001)]
@@ -210,7 +184,6 @@ def create_map(temple, feature='parking'):
         folium.Marker([data['lat'] + 0.0015, data['lng'] - 0.0005], popup="Drone Deployed", icon=folium.Icon(color='blue', icon='plane')).add_to(m)
     return m
 
-# Professional UI Configuration
 st.set_page_config(page_title="Yatra Sevak - Professional Temple Management", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""
 <style>
@@ -231,7 +204,6 @@ temple = st.sidebar.selectbox(t['select_temple'], list(TEMPLE_DATA.keys()))
 role = st.sidebar.selectbox(t['view_as'], [t['pilgrim_app'], t['authority_dashboard']])
 st.sidebar.title(f"{t['title']} - {temple}")
 
-# Sidebar for Simulations (Professional Demo Controls)
 st.sidebar.header("Simulation Controls")
 if st.sidebar.button('Simulate Visitor Surge (#1 → #2)'):
     st.session_state.surge_active = True
@@ -244,13 +216,12 @@ st.sidebar.info("This professional prototype integrates all 7 features with real
 
 st.title(f"{t['title']} - {temple}")
 
-# Pilgrim View (Refined Tabs and Interactions)
 if role == t['pilgrim_app']:
     if st.session_state.user_id is None:
         st.session_state.user_id = len(st.session_state.queue_data) + 1
     tabs = st.tabs([t['home_info'], t['join_queue'], t['sos_nav'], t['surveillance'], t['traffic'], t['accessibility'], t['medical_map'], t['prediction']])
     
-    with tabs[0]:  # #6
+    with tabs[0]:
         st.markdown(f"<div class='section-header'>{t['temple_info_wait']}</div>", unsafe_allow_html=True)
         weather_df = fetch_weather_forecast(TEMPLE_DATA[temple]['lat'], TEMPLE_DATA[temple]['lng'], 1)
         current_temp = weather_df['temperature'].iloc[0] if not weather_df.empty else 28
@@ -269,9 +240,6 @@ if role == t['pilgrim_app']:
         if st.session_state.crowd_alert_sent:
             st.warning("🚨 High Crowd Detected! Avoid Congested Areas (#6).")
     
-    # ... (Similar refinements for other tabs: better metrics, icons, error handling)
-    
-    # Example for Queue Tab
     with tabs[1]:
         st.markdown(f"<div class='section-header'>{t['virtual_darshan']}</div>", unsafe_allow_html=True)
         st.info(t['dynamic_slots'])
@@ -298,12 +266,165 @@ if role == t['pilgrim_app']:
                     st.metric("Remaining Wait", f"{remaining:.0f} minutes", f"Slot: {row['slot']} ({row['slot_type']})")
                 if st.button(t['refresh_queue']):
                     st.rerun()
+    
+    with tabs[2]:
+        st.markdown(f"<div class='section-header'>{t['emergency_sos']}</div>", unsafe_allow_html=True)
+        if st.button(t['press_sos'], type="primary"):
+            st.error(t['sos_sent'])
+            st.session_state.drone_dispatched = True
+            st.success(t['drone_dispatch'])
+            folium_static(create_map(temple, 'drone'))
+    
+    with tabs[3]:
+        st.markdown(f"<div class='section-header'>{t['surveillance']}</div>", unsafe_allow_html=True)
+        if st.button(t['scan_now']):
+            alert, density = simulate_monitoring(temple)
+            fig, ax = plt.subplots(figsize=(6,5))
+            ax.pie([density, 1-density], labels=[t['crowded'], t['safe']], autopct='%1.1f%%', colors=['#ff6b6b', '#4ecdc4'], shadow=True, explode=(0.1, 0))
+            ax.set_title('CCTV Density (#3)')
+            st.pyplot(fig)
+            st.metric("Sensors", f"{density*100:.0f}%", "IoT")
+            st.metric("Drones", "Active", delta="Monitoring")
+            if alert:
+                st.error(t['panic_detected'].format(alert['location']))
+    
+    with tabs[4]:
+        st.markdown(f"<div class='section-header'>{t['parking_mobility']}</div>", unsafe_allow_html=True)
+        folium_static(create_map(temple, 'parking'))
+        data = TEMPLE_DATA[temple]
+        st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))
+        st.subheader(t['shuttle_schedule'])
+        schedule = pd.DataFrame({
+            'Time': ['10AM', '12PM', '2PM', '4PM'],
+            'From': [f"{temple} Parking", 'Main Gate', 'Bus Station', 'Approach Road'],
+            'To': ['Temple', f"{temple} Parking", 'Temple', 'Shuttle Hub'],
+            'Status': ['On Time', 'Delayed 5min', 'On Time', 'Police Coordinated']
+        })
+        st.dataframe(schedule.style.background_gradient(cmap='viridis'))
+        st.subheader(t['traffic_flow'])
+        flow = np.random.choice(['Smooth', 'Moderate', 'Congested'])
+        st.metric("Flow Status", flow, "Police Dynamic System")
+    
+    with tabs[5]:
+        st.markdown(f"<div class='section-header'>{t['voice_guide']}</div>", unsafe_allow_html=True)
+        if st.button('Start Voice-Guided Mode (#7)'):
+            st.info(t['audio_sim'])
+            st.audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcDbiIAA==", format="audio/wav")
+        st.info("AR Navigation Sim: Priority route highlighted for disabled/elderly.")
+    
+    with tabs[6]:
+        st.markdown(f"<div class='section-header'>{t['medical_map']}</div>", unsafe_allow_html=True)
+        folium_static(create_map(temple, 'medical'))
+        st.info("Nearest Aid: 200m - Mapped for Quick Response (#4).")
+    
+    with tabs[7]:
+        st.markdown(f"<div class='section-header'>{t['prediction']}</div>", unsafe_allow_html=True)
+        pred_df = predict_crowd(temple, 7)
+        if not pred_df.empty:
+            st.dataframe(pred_df.style.background_gradient(cmap='YlOrRd').format({'predicted_footfall': '{:.0f}'}))
+            fig, ax = plt.subplots(figsize=(10,5))
+            bars = ax.bar([d.strftime('%Y-%m-%d') for d in pred_df['date']], pred_df['predicted_footfall'], color='orange', edgecolor='black')
+            ax.set_title(f'Predicted Footfall - {temple} (#1)')
+            ax.set_ylabel('Footfall')
+            ax.set_xlabel('Date')
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
 
-# Authority Dashboard (Similar Refinements)
 elif role == t['authority_dashboard']:
-    # ... (Enhanced with more metrics, professional charts)
+    tabs = st.tabs([t['prediction'], t['surveillance'], t['active_queues'], t['barricades'], t['traffic'], 'Engagement (#6)', t['accessibility'], t['sos_nav']])
+    
+    with tabs[0]:
+        st.markdown(f"<div class='section-header'>{t['prediction']}</div>", unsafe_allow_html=True)
+        pred_df = predict_crowd(temple, 7)
+        if not pred_df.empty:
+            st.dataframe(pred_df.style.background_gradient(cmap='YlOrRd').format({'predicted_footfall': '{:.0f}'}))
+            fig, ax = plt.subplots(figsize=(10,5))
+            bars = ax.bar([d.strftime('%Y-%m-%d') for d in pred_df['date']], pred_df['predicted_footfall'], color='orange', edgecolor='black')
+            ax.set_title(f'Surge Forecast - {temple} (#1: Historical/Weather/Holidays/Festivals)')
+            ax.set_ylabel('Footfall')
+            ax.set_xlabel('Date')
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+            high_surge = pred_df[pred_df['predicted_footfall'] > TEMPLE_DATA[temple]['base_footfall'] * 2]
+            if not high_surge.empty:
+                st.warning(t['surge_alert'].format(high_surge['date'].iloc[0].strftime('%Y-%m-%d')))
+                st.session_state.surge_active = True
+    
+    with tabs[1]:
+        st.markdown(f"<div class='section-header'>{t['surveillance']}</div>", unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button(t['scan_now'], use_container_width=True):
+                st.session_state.alert, st.session_state.density = simulate_monitoring(temple)
+                fig, ax = plt.subplots()
+                ax.pie([st.session_state.density, 1-st.session_state.density], labels=[t['crowded'], t['safe']], autopct='%1.1f%%', colors=['#ff6b6b', '#4ecdc4'], shadow=True, explode=(0.1, 0))
+                st.pyplot(fig)
+        with col2:
+            st.metric("IoT Sensors", f"{st.session_state.density*100:.0f}% Density")
+            st.metric("CCTV Feeds", "Live", "AI Analytics")
+            st.metric("Drones", "4/5 Deployed", "Auto Patrol")
+        if st.session_state.alert:
+            st.error(t['panic_detected'].format(st.session_state.alert['location']))
+            st.session_state.crowd_alert_sent = True
+    
+    with tabs[2]:
+        st.markdown(f"<div class='section-header'>{t['active_queues']}</div>", unsafe_allow_html=True)
+        q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple])
+        if not q_df.empty:
+            st.dataframe(q_df.style.background_gradient(cmap='coolwarm'))
+        a_df = pd.DataFrame([a for a in st.session_state.alerts if a.get('temple') == temple])
+        if not a_df.empty:
+            st.dataframe(a_df.style.highlight_max(axis=0))
+            if st.button(t['dispatch'], type="primary"):
+                st.success(t['dispatched'])
+        else:
+            st.info(t['no_alerts'])
+    
+    with tabs[3]:
+        st.markdown(f"<div class='section-header'>{t['barricades']}</div>", unsafe_allow_html=True)
+        statuses = {'Main Gate': 'Locked (High Surge)', 'Darshan Hall': 'Open', 'Exit': 'Active'}
+        for loc, stat in statuses.items():
+            color = 'red' if 'Locked' in stat else 'green' if 'Open' in stat else 'orange'
+            st.metric(loc, stat, delta="AI-Enabled (#4)")
+    
+    with tabs[4]:
+        st.markdown(f"<div class='section-header'>{t['parking_mobility']}</div>", unsafe_allow_html=True)
+        folium_static(create_map(temple, 'parking'))
+        data = TEMPLE_DATA[temple]
+        st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))
+        st.subheader(t['shuttle_schedule'])
+        schedule = pd.DataFrame({
+            'Time': ['10AM', '12PM', '2PM'],
+            'Route': [f"{temple} Parking → Temple", 'Gate → Parking', 'Station → Temple'],
+            'Coord': ['Police Cleared', 'On Time', 'Dynamic Reroute']
+        })
+        st.dataframe(schedule.style.background_gradient(cmap='viridis'))
+        st.subheader(t['traffic_flow'])
+        light = np.random.choice(['🟢 Green', '🟡 Yellow', '🔴 Red'])
+        st.metric("Flow", light, "City Police System")
+    
+    with tabs[5]:
+        st.markdown(f"<div class='section-header'>Pilgrim Engagement (#6)</div>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns(3)
+        q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple])
+        col1.metric("Avg Wait Time", f"{np.mean(q_df['est_wait']):.0f} min" if not q_df.empty else "N/A")
+        col2.metric("Notifications Sent", int(st.session_state.crowd_alert_sent) + int(st.session_state.surge_active))
+        col3.metric("Active Pilgrims", len(q_df))
+        st.info(f"{t['temple_timings']} | {t['routes']} | {t['facilities']} | {t['emergency_contacts']}")
+    
+    with tabs[6]:
+        st.markdown(f"<div class='section-header'>{t['accessibility']}</div>", unsafe_allow_html=True)
+        st.checkbox("Enable Priority Queues (#7)")
+        if st.button("Broadcast Voice Navigation (#7)"):
+            st.success("Voice Guide Broadcasted to Devices (#7)")
+            st.info(t['audio_sim'])
+    
+    with tabs[7]:
+        st.markdown(f"<div class='section-header'>{t['sos_nav']}</div>", unsafe_allow_html=True)
+        st.info("Monitor SOS Alerts and Dispatch (#4)")
+        if st.session_state.drone_dispatched:
+            st.success(t['drone_dispatch'])
+        folium_static(create_map(temple, 'medical'))
 
 st.markdown("---")
 st.caption(t['footer'])
-
-# Removed time.sleep for better UX; use buttons for refresh
