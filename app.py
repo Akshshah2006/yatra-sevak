@@ -186,6 +186,8 @@ if 'alerts' not in st.session_state: st.session_state.alerts = []
 if 'surge_active' not in st.session_state: st.session_state.surge_active = False
 if 'crowd_alert_sent' not in st.session_state: st.session_state.crowd_alert_sent = False
 if 'drone_dispatched' not in st.session_state: st.session_state.drone_dispatched = False
+if 'density' not in st.session_state: st.session_state.density = 0.0
+if 'alert' not in st.session_state: st.session_state.alert = None
 
 # Model with Temple Param (#1)
 @st.cache_data
@@ -219,7 +221,7 @@ def predict_crowd(temple, days_ahead=7):
     data = TEMPLE_DATA[temple]
     model, features, _ = load_and_train_model(data['base_footfall'])
     try:
-        today = date(2025, 10, 3)
+        today = date.today()  # Made dynamic for better prototype
         future_dates = pd.date_range(start=today, periods=days_ahead, freq='D')
         future_n = len(future_dates)
         future_temp = np.random.normal(28, 5, future_n).clip(15, 40)
@@ -276,14 +278,17 @@ def create_map(temple, feature='parking'):
         folium.Marker([data['lat'] + 0.0015, data['lng'] - 0.0005], popup="Drone w/ Kit", icon=folium.Icon(color='blue')).add_to(m)
     return m
 
-# UI
-st.set_page_config(page_title="Yatra Sevak - 4 Temples", layout="wide")
+# UI Enhancements for Winning Prototype
+st.set_page_config(page_title="Yatra Sevak - 4 Temples", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""
 <style>
 .main {background-color: #e6f3ff;}
 .stTabs [data-baseweb="tab-list"] {gap: 0.5rem; font-size: 1.1rem;}
-.stTab > div > div {padding: 1.5rem; border-radius: 10px;}
-.metric {background-color: #4CAF50; color: white;}
+.stTab > div > div {padding: 1.5rem; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);}
+.metric {background-color: #4CAF50; color: white; border-radius: 8px; padding: 10px;}
+.stButton > button {background-color: #007bff; color: white; border-radius: 8px;}
+.stButton > button:hover {background-color: #0056b3;}
+.section-header {font-size: 1.5rem; font-weight: bold; color: #333;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -293,14 +298,16 @@ temple = st.sidebar.selectbox(t['select_temple'], list(TEMPLE_DATA.keys()))
 role = st.sidebar.selectbox(t['view_as'], [t['pilgrim_app'], t['authority_dashboard']])
 st.sidebar.title(f"{t['title']} - {temple}")
 
-# Sidebar Sims
-st.sidebar.header("Demo Integrations")
-if st.sidebar.button('Sim Surge: #1 → #2 (Limit Slots)'):
+# Sidebar Sims with Enhancements
+st.sidebar.header("Demo Simulations (For Testing)")
+if st.sidebar.button('Simulate Surge: #1 → #2 (Limit Slots)'):
     st.session_state.surge_active = True
     st.rerun()
-if st.sidebar.button('Sim Crowded: #3 → #4 → #6 (Alert App)'):
+if st.sidebar.button('Simulate Crowded: #3 → #4 → #6 (Alert App)'):
     simulate_monitoring(temple)
     st.rerun()
+st.sidebar.markdown("---")
+st.sidebar.info("This prototype simulates all 7 features without real hardware. Ideal for hackathon demo!")
 
 st.title(f"{t['title']} - {temple}")
 
@@ -308,7 +315,7 @@ if role == t['pilgrim_app']:
     tabs = st.tabs([t['home_info'], t['join_queue'], t['sos_nav'], t['surveillance'], t['traffic'], t['accessibility'], t['medical_map']])
     
     with tabs[0]:  # #6
-        st.header(f"{t['temple_info_wait']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['temple_info_wait']} - {temple}</div>", unsafe_allow_html=True)
         pred_df = predict_crowd(temple, 3)
         if not pred_df.empty:
             st.dataframe(pred_df[['date', 'predicted_footfall']].style.background_gradient(cmap='Blues'))
@@ -325,17 +332,17 @@ if role == t['pilgrim_app']:
             st.warning("🚨 Avoid area - High crowd detected! (#6 Push Sim)")
     
     with tabs[1]:  # #2
-        st.header(f"{t['virtual_darshan']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['virtual_darshan']} - {temple}</div>", unsafe_allow_html=True)
         st.info(t['dynamic_slots'])
         priority = st.checkbox(t['elderly_priority'])
         if st.button(t['join_btn'], use_container_width=True):
             user_id = len(st.session_state.queue_data) + 1
             msg = join_queue(temple, user_id, priority, lang)
             st.success(msg)
-            # QR Sim
+            # Enhanced QR Sim with better visualization
             qr_text = f"Pass: {temple}-User{user_id} Slot:{st.session_state.queue_data[-1]['slot']}"
             fig, ax = plt.subplots(figsize=(4,4))
-            ax.text(0.5, 0.5, qr_text, ha='center', va='center', fontsize=12)
+            ax.text(0.5, 0.5, qr_text, ha='center', va='center', fontsize=12, bbox=dict(facecolor='white', edgecolor='black', boxstyle='square,pad=1'))
             ax.axis('off')
             st.pyplot(fig)
         if st.button(t['simulate_turn']):
@@ -349,7 +356,7 @@ if role == t['pilgrim_app']:
                 st.metric("Wait Left", f"{row['est_wait'] - progress/100 * row['est_wait']:.0f} min", f"Slot: {row['slot']}")
     
     with tabs[2]:  # #4
-        st.header(f"{t['emergency_sos']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['emergency_sos']} - {temple}</div>", unsafe_allow_html=True)
         if st.button(t['press_sos'], type="primary"):
             st.error(t['sos_sent'])
             st.session_state.drone_dispatched = True
@@ -357,11 +364,11 @@ if role == t['pilgrim_app']:
             folium_static(create_map(temple, 'drone'))
     
     with tabs[3]:  # #3
-        st.header(f"{t['surveillance']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['surveillance']} - {temple}</div>", unsafe_allow_html=True)
         if st.button(t['scan_now']):
             alert, density = simulate_monitoring(temple)
             fig, ax = plt.subplots(figsize=(6,5))
-            ax.pie([density, 1-density], labels=[t['crowded'], t['safe']], autopct='%1.1f%%', colors=['#ff6b6b', '#4ecdc4'])
+            ax.pie([density, 1-density], labels=[t['crowded'], t['safe']], autopct='%1.1f%%', colors=['#ff6b6b', '#4ecdc4'], shadow=True, explode=(0.1, 0))
             ax.set_title('CCTV Density (#3)')
             st.pyplot(fig)
             st.metric("Sensors", f"{density*100:.0f}%", "IoT")
@@ -370,7 +377,7 @@ if role == t['pilgrim_app']:
                 st.error(t['panic_detected'].format(alert['location']))
     
     with tabs[4]:  # #5
-        st.header(f"{t['parking_mobility']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['parking_mobility']} - {temple}</div>", unsafe_allow_html=True)
         folium_static(create_map(temple, 'parking'))
         data = TEMPLE_DATA[temple]
         st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))  # Scale spots by size
@@ -381,21 +388,21 @@ if role == t['pilgrim_app']:
             'To': ['Temple', f"{temple} Parking", 'Temple', 'Shuttle Hub'],
             'Status': ['On Time', 'Delayed 5min', 'On Time', 'Police Coordinated']
         })
-        st.dataframe(schedule.style.highlight_max(axis=0))
+        st.dataframe(schedule.style.background_gradient(cmap='viridis'))
         st.subheader(t['traffic_flow'])
         flow = np.random.choice(['Smooth', 'Moderate', 'Congested'])
         st.metric("Flow Status", flow, "Police Dynamic System")
     
     with tabs[5]:  # #7
-        st.header(f"{t['voice_nav']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['voice_nav']} - {temple}</div>", unsafe_allow_html=True)
         if st.button('Start Voice-Guided Mode (#7)'):
             st.info(t['audio_sim'])
-            # Sim Audio
+            # Sim Audio (placeholder enhanced)
             st.audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcDbiIAA==", format="audio/wav")
         st.info("AR Navigation Sim: Priority route highlighted for disabled.")
     
     with tabs[6]:  # #4 Medical
-        st.header(f"{t['medical_map']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['medical_map']} - {temple}</div>", unsafe_allow_html=True)
         folium_static(create_map(temple, 'medical'))
         st.info("Nearest Aid: 200m - Mapped for Quick Response.")
 
@@ -403,13 +410,15 @@ elif role == t['authority_dashboard']:
     tabs = st.tabs([t['prediction'], t['surveillance'], t['active_queues'], t['barricades'], t['traffic'], 'Engagement (#6)', t['accessibility']])
     
     with tabs[0]:  # #1
-        st.header(f"{t['prediction']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['prediction']} - {temple}</div>", unsafe_allow_html=True)
         pred_df = predict_crowd(temple, 7)
         if not pred_df.empty:
             st.dataframe(pred_df.style.background_gradient(cmap='YlOrRd'))
             fig, ax = plt.subplots(figsize=(10,5))
-            bars = ax.bar([d.strftime('%Y-%m-%d') for d in pred_df['date']], pred_df['predicted_footfall'], color='orange')
+            bars = ax.bar([d.strftime('%Y-%m-%d') for d in pred_df['date']], pred_df['predicted_footfall'], color='orange', edgecolor='black')
             ax.set_title(f'Surge Forecast - {temple} (#1: Historical/Weather/Holidays/Festivals)')
+            ax.set_ylabel('Footfall')
+            ax.set_xlabel('Date')
             plt.xticks(rotation=45)
             st.pyplot(fig)
             high_surge = pred_df[pred_df['predicted_footfall'] > TEMPLE_DATA[temple]['base_footfall'] * 2]
@@ -418,44 +427,44 @@ elif role == t['authority_dashboard']:
                 st.session_state.surge_active = True
     
     with tabs[1]:  # #3
-        st.header(f"{t['surveillance']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['surveillance']} - {temple}</div>", unsafe_allow_html=True)
         col1, col2 = st.columns(2)
         with col1:
             if st.button(t['scan_now'], use_container_width=True):
-                alert, density = simulate_monitoring(temple)
+                st.session_state.alert, st.session_state.density = simulate_monitoring(temple)
                 fig, ax = plt.subplots()
-                ax.pie([density, 1-density], labels=[t['crowded'], t['safe']], autopct='%1.1f%%', colors=['#ff6b6b', '#4ecdc4'])
+                ax.pie([st.session_state.density, 1-st.session_state.density], labels=[t['crowded'], t['safe']], autopct='%1.1f%%', colors=['#ff6b6b', '#4ecdc4'], shadow=True, explode=(0.1, 0))
                 st.pyplot(fig)
         with col2:
-            st.metric("IoT Sensors", f"{density*100:.0f}% Density")
+            st.metric("IoT Sensors", f"{st.session_state.density*100:.0f}% Density")
             st.metric("CCTV Feeds", "Live", "AI Analytics")
             st.metric("Drones", "4/5 Deployed", "Auto Patrol")
-        if alert:
-            st.error(t['panic_detected'].format(alert['location']))
+        if st.session_state.alert:
+            st.error(t['panic_detected'].format(st.session_state.alert['location']))
             st.session_state.crowd_alert_sent = True
     
     with tabs[2]:  # #2 + #4
-        st.header(f"{t['active_queues']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['active_queues']} - {temple}</div>", unsafe_allow_html=True)
         q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple])
         if not q_df.empty:
-            st.dataframe(q_df)
+            st.dataframe(q_df.style.background_gradient(cmap='coolwarm'))
         a_df = pd.DataFrame([a for a in st.session_state.alerts if a.get('temple') == temple])
         if not a_df.empty:
-            st.dataframe(a_df)
+            st.dataframe(a_df.style.highlight_max(axis=0))
             if st.button(t['dispatch'], type="primary"):
                 st.success(t['dispatched'])
         else:
             st.info(t['no_alerts'])
     
     with tabs[3]:  # #4 Barricades
-        st.header(f"{t['barricades']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['barricades']} - {temple}</div>", unsafe_allow_html=True)
         statuses = {'Main Gate': 'Locked (High Surge)', 'Darshan Hall': 'Open', 'Exit': 'Active'}
         for loc, stat in statuses.items():
             color = 'red' if 'Locked' in stat else 'green' if 'Open' in stat else 'orange'
             st.metric(loc, stat, delta=f"AI-Enabled (#4)")
     
     with tabs[4]:  # #5
-        st.header(f"{t['parking_mobility']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['parking_mobility']} - {temple}</div>", unsafe_allow_html=True)
         folium_static(create_map(temple, 'parking'))
         data = TEMPLE_DATA[temple]
         st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))
@@ -465,13 +474,13 @@ elif role == t['authority_dashboard']:
             'Route': [f"{temple} Parking → Temple", 'Gate → Parking', 'Station → Temple'],
             'Coord': ['Police Cleared', 'On Time', 'Dynamic Reroute']
         })
-        st.dataframe(schedule)
+        st.dataframe(schedule.style.background_gradient(cmap='viridis'))
         st.subheader(t['traffic_flow'])
         light = np.random.choice(['🟢 Green', '🟡 Yellow', '🔴 Red'])
         st.metric("Flow", light, "City Police System")
     
     with tabs[5]:  # #6
-        st.header(f"Pilgrim Engagement () - {temple}")
+        st.markdown(f"<div class='section-header'>Pilgrim Engagement () - {temple}</div>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple])
         col1.metric("Wait Times", f"{np.mean(q_df['est_wait']):.0f} min Avg" if not q_df.empty else "N/A")
@@ -480,7 +489,7 @@ elif role == t['authority_dashboard']:
         st.info(f"{t['temple_timings']} | {t['routes']} | {t['facilities']} | {t['emergency_contacts']}")
     
     with tabs[6]:  # #7
-        st.header(f"{t['accessibility']} - {temple}")
+        st.markdown(f"<div class='section-header'>{t['accessibility']} - {temple}</div>", unsafe_allow_html=True)
         st.checkbox("Enable Priority Queues ()")
         if st.button("Broadcast Voice Nav"):
             st.success("Voice Guide Sent to All Devices ()")
