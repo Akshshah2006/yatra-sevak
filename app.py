@@ -8,6 +8,7 @@ import folium
 from streamlit_folium import folium_static
 from sklearn.model_selection import train_test_split
 import io
+import time  # Added for real-time simulation
 
 # Temple Data: Coords & Base Daily Footfall (from Gujarat Tourism/Wiki)
 TEMPLE_DATA = {
@@ -21,32 +22,32 @@ TEMPLE_DATA = {
 english_trans = {
     'title': '🛕 Yatra Sevak: Multi-Temple Management (4 Sites)',
     'select_temple': 'Select Temple',
-    'home_info': 'Home & Temple Info ',
-    'join_queue': 'Smart Queue & Ticketing ',
-    'sos_nav': 'Emergency & Safety ',
-    'surveillance': 'IoT & Surveillance ',
-    'traffic': 'Traffic & Mobility ',
-    'accessibility': 'Accessibility Features ',
-    'prediction': 'AI Crowd Prediction ',
+    'home_info': 'Home & Temple Info (#6)',
+    'join_queue': 'Smart Queue & Ticketing (#2)',
+    'sos_nav': 'Emergency & Safety (#4)',
+    'surveillance': 'IoT & Surveillance (#3)',
+    'traffic': 'Traffic & Mobility (#5)',
+    'accessibility': 'Accessibility Features (#7)',
+    'prediction': 'AI Crowd Prediction (#1)',
     'pilgrim_app': 'Pilgrim View',
     'authority_dashboard': 'Authority Dashboard',
     'language': 'Language / ભાષા / भाषा',
     'view_as': 'View As',
-    'temple_info_wait': 'Engagement: Timings, Routes, Facilities ',
+    'temple_info_wait': 'Engagement: Timings, Routes, Facilities (#6)',
     'current_weather': 'Weather (for ): 28°C (Sim). Routes Below.',
-    'virtual_darshan': 'Virtual Queue Management',
-    'elderly_priority': 'Priority for Elderly/Disabled ',
+    'virtual_darshan': 'Virtual Queue Management (#2)',
+    'elderly_priority': 'Priority for Elderly/Disabled (#7)',
     'join_btn': 'Get Digital Darshan Pass',
     'simulate_turn': 'Simulate Your Turn',
     'token_issued': 'Pass Issued! Wait: {} mins. Slot: {}. Real-time Update.',
     'your_turn': 'Your Turn! Proceed.',
-    'emergency_sos': 'SOS Button ',
+    'emergency_sos': 'SOS Button (#4)',
     'press_sos': '🚨 Press SOS',
     'sos_sent': 'SOS Sent! First Responders Alerted. Drone Dispatched.',
-    'voice_guide': 'Voice-Guided Navigation ',
+    'voice_guide': 'Voice-Guided Navigation (#7)',
     'audio_sim': "Voice: 'Turn left 50m to priority entry.'",
     'surge_alert': 'Surge Forecast: Limiting Slots (#1 → #2)',
-    'scan_now': 'Scan CCTV/Sensors/Drones',
+    'scan_now': 'Scan CCTV/Sensors/Drones (#3)',
     'crowded': 'Crowded (High Density)',
     'safe': 'Safe',
     'panic_detected': '🚨 Panic at {}! Triggered Alert (#3 → #4). Notify App .',
@@ -54,21 +55,22 @@ english_trans = {
     'no_alerts': 'No Alerts.',
     'dispatch': 'Dispatch Responders',
     'dispatched': 'Dispatched! (Police/Medical).',
-    'parking_mobility': 'Parking Guidance & Shuttle ',
+    'parking_mobility': 'Parking Guidance & Shuttle (#5)',
     'empty_spots': 'Empty Spots: {}/10. Police-Integrated Flow.',
     'footer': 'Scalable to 4 Temples: Ambaji, Dwarka, Pavagadh, Somnath. All 7 Features Integrated. ❤️',
-    'predicted_crowd': 'Predicted Footfall',
+    'predicted_crowd': 'Predicted Footfall (#1)',
     'temple_timings': 'Timings: 5AM-9PM ',
     'facilities': 'Facilities: Restrooms, Food, Medical ',
     'emergency_contacts': 'Contacts: Police 100, Medical 108 ',
     'routes': 'Routes: Gate → Hall → Exit ',
-    'medical_map': 'Medical Mapping ',
-    'barricades': 'Smart Barricades ',
+    'medical_map': 'Medical Mapping (#4)',
+    'barricades': 'Smart Barricades (#4)',
     'drone_dispatch': 'Drone Dispatched w/ Camera/Speaker/Kit ',
     'dynamic_slots': 'Dynamic Slots: Free if Low Demand ',
     'voice_nav': 'Voice Mode for Visually Impaired ',
     'shuttle_schedule': 'Shuttle Coordination ',
-    'traffic_flow': 'Dynamic Traffic '
+    'traffic_flow': 'Dynamic Traffic ',
+    'refresh_queue': 'Refresh Queue Status'
 }
 
 TRANSLATIONS = {
@@ -90,7 +92,7 @@ TRANSLATIONS = {
         'view_as': 'જોવા માટે',
         'temple_info_wait': 'એન્ગેજમેન્ટ: સમય, માર્ગ, સુવિધાઓ (#6)',
         'current_weather': 'હવામાન (#1): 28°C (સિમ). નીચે માર્ગો.',
-        'virtual_darshan': 'વર્ચ્યુઅલ કતાર વ્યવસ્થાપન',
+        'virtual_darshan': 'વર્ચ્યુઅલ કતાર વ્યવસ્થાપન (#2)',
         'elderly_priority': 'વૃદ્ધ/અપંગ માટે પ્રાયોરિટી (#7)',
         'join_btn': 'ડિજિટલ દર્શન પાસ મેળવો',
         'simulate_turn': 'તમારી વાર સિમ્યુલેટ કરો',
@@ -102,7 +104,7 @@ TRANSLATIONS = {
         'voice_guide': 'વૉઇસ-ગાઇડેડ નેવિગેશન (#7)',
         'audio_sim': "વૉઇસ: '50mમાં ડાબી વળો પ્રાયોરિટી એન્ટ્રી તરફ.'",
         'surge_alert': 'સર્જ અનુમાન: સ્લોટ્સ મર્યાદિત (#1 → #2)',
-        'scan_now': 'CCTV/સેન્સર/ડ્રોન સ્કેન',
+        'scan_now': 'CCTV/સેન્સર/ડ્રોન સ્કેન (#3)',
         'crowded': 'ભીડ (ઉચ્ચ ઘનતા)',
         'safe': 'સુરક્ષિત',
         'panic_detected': '🚨 {} પર પેનિક! અલર્ટ ટ્રિગર (#3 → #4). એપને જાણ (#6).',
@@ -113,18 +115,19 @@ TRANSLATIONS = {
         'parking_mobility': 'પાર્કિંગ માર્ગદર્શન અને શટલ (#5)',
         'empty_spots': 'ખાલી જગ્યા: {}/10. પોલીસ-એકીકૃત ફ્લો.',
         'footer': '4 મંદિરો માટે વિસ્તરણીય: અંબાજી, દ્વારકા, પાવાગઢ, સોમનાથ. બધી 7 ફીચર્સ એકીકૃત. ❤️',
-        'predicted_crowd': 'અનુમાનિત ભીડ',
-        'temple_timings': 'સમય: 5AM-9PM (#6)',
-        'facilities': 'સુવિધાઓ: રેસ્ટરૂમ, ખાવાનું, મેડિકલ (#6)',
-        'emergency_contacts': 'સંપર્ક: પોલીસ 100, મેડિકલ 108 (#6)',
-        'routes': 'માર્ગ: ગેટ → હોલ → એક્ઝિટ (#6)',
+        'predicted_crowd': 'અનુમાનિત ભીડ (#1)',
+        'temple_timings': 'સમય: 5AM-9PM ',
+        'facilities': 'સુવિધાઓ: રેસ્ટરૂમ, ખાવાનું, મેડિકલ ',
+        'emergency_contacts': 'સંપર્ક: પોલીસ 100, મેડિકલ 108 ',
+        'routes': 'માર્ગ: ગેટ → હોલ → એક્ઝિટ ',
         'medical_map': 'મેડિકલ મેપિંગ (#4)',
         'barricades': 'સ્માર્ટ બેરિકેડ્સ (#4)',
-        'drone_dispatch': 'કેમેરા/સ્પીકર/કીટ સાથે ડ્રોન મોકલાયું (#4)',
-        'dynamic_slots': 'ડાયનેમિક સ્લોટ્સ: ઓછી માંગમાં મફત (#2)',
-        'voice_nav': 'દ્રષ્ટિહીન માટે વૉઇસ મોડ (#7)',
-        'shuttle_schedule': 'શટલ કોર્ડિનેશન (#5)',
-        'traffic_flow': 'ડાયનેમિક ટ્રાફિક (#5)'
+        'drone_dispatch': 'કેમેરા/સ્પીકર/કીટ સાથે ડ્રોન મોકલાયું ',
+        'dynamic_slots': 'ડાયનેમિક સ્લોટ્સ: ઓછી માંગમાં મફત ',
+        'voice_nav': 'દ્રષ્ટિહીન માટે વૉઇસ મોડ ',
+        'shuttle_schedule': 'શટલ કોર્ડિનેશન ',
+        'traffic_flow': 'ડાયનેમિક ટ્રાફિક ',
+        'refresh_queue': 'કતાર સ્થિતિ તાજી કરો'
     },
     'Hindi': {
         **english_trans,
@@ -143,7 +146,7 @@ TRANSLATIONS = {
         'view_as': 'देखें के रूप में',
         'temple_info_wait': 'एंगेजमेंट: समय, मार्ग, सुविधाएं (#6)',
         'current_weather': 'मौसम (#1): 28°C (सिम). नीचे मार्ग.',
-        'virtual_darshan': 'वर्चुअल कतार प्रबंधन',
+        'virtual_darshan': 'वर्चुअल कतार प्रबंधन (#2)',
         'elderly_priority': 'वृद्ध/अपंग के लिए प्राथमिकता (#7)',
         'join_btn': 'डिजिटल दर्शन पास प्राप्त करें',
         'simulate_turn': 'अपनी बारी सिमुलेट करें',
@@ -155,7 +158,7 @@ TRANSLATIONS = {
         'voice_guide': 'वॉइस-गाइडेड नेविगेशन (#7)',
         'audio_sim': "वॉइस: '50m में बाएं मुड़ें प्राथमिकता एंट्री की ओर।'",
         'surge_alert': 'सर्ज पूर्वानुमान: स्लॉट्स सीमित (#1 → #2)',
-        'scan_now': 'CCTV/सेंसर/ड्रोन स्कैन',
+        'scan_now': 'CCTV/सेंसर/ड्रोन स्कैन (#3)',
         'crowded': 'भीड़ (उच्च घनत्व)',
         'safe': 'सुरक्षित',
         'panic_detected': '🚨 {} पर पैनिक! अलर्ट ट्रिगर (#3 → #4). ऐप को सूचित (#6).',
@@ -166,21 +169,22 @@ TRANSLATIONS = {
         'parking_mobility': 'पार्किंग मार्गदर्शन और शटल (#5)',
         'empty_spots': 'खाली स्थान: {}/10. पुलिस-एकीकृत फ्लो.',
         'footer': '4 मंदिरों के लिए स्केलेबल: अंबाजी, द्वारका, पावागढ़, सोमनाथ। सभी 7 फीचर्स एकीकृत। ❤️',
-        'predicted_crowd': 'अनुमानित भीड़',
-        'temple_timings': 'समय: 5AM-9PM (#6)',
-        'facilities': 'सुविधाएं: रेस्टोरूम, खाना, मेडिकल (#6)',
-        'emergency_contacts': 'संपर्क: पुलिस 100, मेडिकल 108 (#6)',
-        'routes': 'मार्ग: गेट → हॉल → एक्जिट (#6)',
+        'predicted_crowd': 'अनुमानित भीड़ (#1)',
+        'temple_timings': 'समय: 5AM-9PM ',
+        'facilities': 'सुविधाएं: रेस्टोरूम, खाना, मेडिकल ',
+        'emergency_contacts': 'संपर्क: पुलिस 100, मेडिकल 108 ',
+        'routes': 'मार्ग: गेट → हॉल → एक्जिट ',
         'medical_map': 'मेडिकल मैपिंग (#4)',
         'barricades': 'स्मार्ट बैरिकेड्स (#4)',
-        'drone_dispatch': 'कैमरा/स्पीकर/किट के साथ ड्रोन भेजा (#4)',
-        'dynamic_slots': 'डायनामिक स्लॉट्स: कम मांग में मुफ्त (#2)',
-        'voice_nav': 'दृष्टिबाधित के लिए वॉइस मोड (#7)',
-        'shuttle_schedule': 'शटल कोऑर्डिनेशन (#5)',
-        'traffic_flow': 'डायनामिक ट्रैफिक (#5)'
+        'drone_dispatch': 'कैमरा/स्पीकर/किट के साथ ड्रोन भेजा ',
+        'dynamic_slots': 'डायनामिक स्लॉट्स: कम मांग में मुफ्त ',
+        'voice_nav': 'दृष्टिबाधित के लिए वॉइस मोड ',
+        'shuttle_schedule': 'शटल कोऑर्डिनेशन ',
+        'traffic_flow': 'डायनामिक ट्रैफिक ',
+        'refresh_queue': 'कतार स्थिति रिफ्रेश करें'
     }
 }
-# Session State
+# Session State - Enhanced for usability
 if 'queue_data' not in st.session_state: st.session_state.queue_data = []
 if 'alerts' not in st.session_state: st.session_state.alerts = []
 if 'surge_active' not in st.session_state: st.session_state.surge_active = False
@@ -188,18 +192,19 @@ if 'crowd_alert_sent' not in st.session_state: st.session_state.crowd_alert_sent
 if 'drone_dispatched' not in st.session_state: st.session_state.drone_dispatched = False
 if 'density' not in st.session_state: st.session_state.density = 0.0
 if 'alert' not in st.session_state: st.session_state.alert = None
+if 'user_id' not in st.session_state: st.session_state.user_id = None  # For pilgrim view tracking
 
-# Model with Temple Param (#1)
+# Model with Temple Param (#1) - AI/ML-based Crowd Prediction
 @st.cache_data
 def load_and_train_model(base_footfall):
     np.random.seed(42)
     dates = pd.date_range(start='2024-01-01', end='2026-01-01', freq='D')
     n = len(dates)
-    festivals = ['2025-01-14', '2025-02-26', '2025-10-20', '2025-11-15', '2025-09-29', '2025-10-07']
+    festivals = ['2025-01-14', '2025-02-26', '2025-10-20', '2025-11-15', '2025-09-29', '2025-10-07']  # Example festivals
     is_festival = [1 if d.strftime('%Y-%m-%d') in festivals else 0 for d in dates]
-    temp = np.random.normal(28, 5, n).clip(15, 40)
+    temp = np.random.normal(28, 5, n).clip(15, 40)  # Simulated weather
     is_holiday = [(d.weekday() >= 5) or isf for d, isf in zip(dates, is_festival)]
-    festival_boost = np.array(is_festival) * (base_footfall * 2)  # Scale boost by temple
+    festival_boost = np.array(is_festival) * (base_footfall * 2)
     holiday_boost = np.array(is_holiday) * (base_footfall * 0.2)
     weather_factor = (30 - temp) / 10
     noise = np.random.normal(0, base_footfall * 0.1, n)
@@ -221,7 +226,7 @@ def predict_crowd(temple, days_ahead=7):
     data = TEMPLE_DATA[temple]
     model, features, _ = load_and_train_model(data['base_footfall'])
     try:
-        today = date.today()  # Made dynamic for better prototype
+        today = date(2025, 10, 4)  # Set to current date as per prompt
         future_dates = pd.date_range(start=today, periods=days_ahead, freq='D')
         future_n = len(future_dates)
         future_temp = np.random.normal(28, 5, future_n).clip(15, 40)
@@ -238,12 +243,12 @@ def predict_crowd(temple, days_ahead=7):
         st.error(f"Prediction error: {e}")
         return pd.DataFrame()
 
-# Queue (Scaled by Temple)
+# Queue Management (#2) - Smart Queue & Ticketing
 def join_queue(temple, user_id, priority=False, lang='English'):
     now = datetime.now()
     pred_df = predict_crowd(temple, 1)
     base = TEMPLE_DATA[temple]['base_footfall']
-    surge_threshold = base * 2  # Scale surge per temple
+    surge_threshold = base * 2
     surge_penalty = 60 if (not pred_df.empty and pred_df['predicted_footfall'].iloc[0] > surge_threshold) else 0
     base_wait = np.random.randint(30, 120)
     est_wait = base_wait + (0 if priority else 15) - surge_penalty
@@ -253,7 +258,7 @@ def join_queue(temple, user_id, priority=False, lang='English'):
     st.session_state.queue_data.append(entry)
     return TRANSLATIONS[lang]['token_issued'].format(est_wait, slot) + f" ({slot_type} - Dynamic Slot)"
 
-# Other Functions (Updated for Temple)
+# Surveillance Simulation (#3) - IoT & Surveillance
 def simulate_monitoring(temple):
     density = np.random.uniform(0.3, 0.9)
     if density > 0.8:
@@ -265,6 +270,7 @@ def simulate_monitoring(temple):
             return alert, density
     return None, density
 
+# Map Creation for Various Features (#4, #5, #7)
 def create_map(temple, feature='parking'):
     data = TEMPLE_DATA[temple]
     m = folium.Map(location=[data['lat'], data['lng']], zoom_start=15)
@@ -278,7 +284,7 @@ def create_map(temple, feature='parking'):
         folium.Marker([data['lat'] + 0.0015, data['lng'] - 0.0005], popup="Drone w/ Kit", icon=folium.Icon(color='blue')).add_to(m)
     return m
 
-# UI Enhancements for Winning Prototype
+# UI - Enhanced for Usability with All Features Highlighted
 st.set_page_config(page_title="Yatra Sevak - 4 Temples", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""
 <style>
@@ -289,6 +295,7 @@ st.markdown("""
 .stButton > button {background-color: #007bff; color: white; border-radius: 8px;}
 .stButton > button:hover {background-color: #0056b3;}
 .section-header {font-size: 1.5rem; font-weight: bold; color: #333;}
+.stProgress > div > div > div > div {background-color: #007bff;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -298,24 +305,26 @@ temple = st.sidebar.selectbox(t['select_temple'], list(TEMPLE_DATA.keys()))
 role = st.sidebar.selectbox(t['view_as'], [t['pilgrim_app'], t['authority_dashboard']])
 st.sidebar.title(f"{t['title']} - {temple}")
 
-# Sidebar Sims with Enhancements
-st.sidebar.header("Demo Simulations (For Testing)")
-if st.sidebar.button('Simulate Surge: #1 → #2 (Limit Slots)'):
+# Sidebar Sims - For Demo and Usability Testing
+st.sidebar.header("Demo Simulations (For Testing Features)")
+if st.sidebar.button('Simulate Surge (#1 → #2)'):
     st.session_state.surge_active = True
     st.rerun()
-if st.sidebar.button('Simulate Crowded: #3 → #4 → #6 (Alert App)'):
+if st.sidebar.button('Simulate Crowd Panic (#3 → #4 → #6)'):
     simulate_monitoring(temple)
     st.rerun()
 st.sidebar.markdown("---")
-st.sidebar.info("This prototype simulates all 7 features without real hardware. Ideal for hackathon demo!")
+st.sidebar.info("Prototype simulates all 7 features: AI Prediction (#1), Queue/Ticketing (#2), Surveillance (#3), Emergency (#4), Traffic (#5), Engagement (#6), Accessibility (#7). No real hardware needed.")
 
 st.title(f"{t['title']} - {temple}")
 
 if role == t['pilgrim_app']:
-    tabs = st.tabs([t['home_info'], t['join_queue'], t['sos_nav'], t['surveillance'], t['traffic'], t['accessibility'], t['medical_map']])
+    if st.session_state.user_id is None:
+        st.session_state.user_id = len(st.session_state.queue_data) + 1  # Assign a user ID for tracking
+    tabs = st.tabs([t['home_info'], t['join_queue'], t['sos_nav'], t['surveillance'], t['traffic'], t['accessibility'], t['medical_map'], t['prediction']])  # Added dedicated prediction tab for usability
     
-    with tabs[0]:  # #6
-        st.markdown(f"<div class='section-header'>{t['temple_info_wait']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[0]:  # #6 - Pilgrim Engagement Platforms
+        st.markdown(f"<div class='section-header'>{t['temple_info_wait']}</div>", unsafe_allow_html=True)
         pred_df = predict_crowd(temple, 3)
         if not pred_df.empty:
             st.dataframe(pred_df[['date', 'predicted_footfall']].style.background_gradient(cmap='Blues'))
@@ -327,20 +336,19 @@ if role == t['pilgrim_app']:
         st.info(t['current_weather'])
         folium_static(create_map(temple, 'parking'))
         if st.session_state.surge_active:
-            st.warning(t['surge_alert'].format('peak hours'))
+            st.warning(t['surge_alert'])
         if st.session_state.crowd_alert_sent:
-            st.warning("🚨 Avoid area - High crowd detected! (#6 Push Sim)")
+            st.warning("🚨 Avoid area - High crowd detected! (#6 Notification)")
     
-    with tabs[1]:  # #2
-        st.markdown(f"<div class='section-header'>{t['virtual_darshan']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[1]:  # #2 - Smart Queue & Ticketing Systems
+        st.markdown(f"<div class='section-header'>{t['virtual_darshan']}</div>", unsafe_allow_html=True)
         st.info(t['dynamic_slots'])
         priority = st.checkbox(t['elderly_priority'])
         if st.button(t['join_btn'], use_container_width=True):
-            user_id = len(st.session_state.queue_data) + 1
-            msg = join_queue(temple, user_id, priority, lang)
+            msg = join_queue(temple, st.session_state.user_id, priority, lang)
             st.success(msg)
-            # Enhanced QR Sim with better visualization
-            qr_text = f"Pass: {temple}-User{user_id} Slot:{st.session_state.queue_data[-1]['slot']}"
+            # QR Code Simulation
+            qr_text = f"Pass: {temple}-User{st.session_state.user_id} Slot:{st.session_state.queue_data[-1]['slot']}"
             fig, ax = plt.subplots(figsize=(4,4))
             ax.text(0.5, 0.5, qr_text, ha='center', va='center', fontsize=12, bbox=dict(facecolor='white', edgecolor='black', boxstyle='square,pad=1'))
             ax.axis('off')
@@ -349,22 +357,27 @@ if role == t['pilgrim_app']:
             st.balloons()
             st.success(t['your_turn'])
         if st.session_state.queue_data:
-            q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple])
-            for idx, row in q_df.iterrows():
-                progress = min(100, (datetime.now() - row['join_time']).total_seconds() / 60 / row['est_wait'] * 100)
-                st.progress(progress / 100)
-                st.metric("Wait Left", f"{row['est_wait'] - progress/100 * row['est_wait']:.0f} min", f"Slot: {row['slot']}")
+            q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple and q.get('user_id') == st.session_state.user_id])
+            if not q_df.empty:
+                for idx, row in q_df.iterrows():
+                    elapsed = (datetime.now() - row['join_time']).total_seconds() / 60
+                    remaining = max(0, row['est_wait'] - elapsed)
+                    progress = min(1.0, elapsed / row['est_wait'])
+                    st.progress(progress)
+                    st.metric("Wait Left", f"{remaining:.0f} min", f"Slot: {row['slot']}")
+                if st.button(t['refresh_queue']):
+                    st.rerun()  # Real-time update
     
-    with tabs[2]:  # #4
-        st.markdown(f"<div class='section-header'>{t['emergency_sos']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[2]:  # #4 - Emergency & Safety Solutions
+        st.markdown(f"<div class='section-header'>{t['emergency_sos']}</div>", unsafe_allow_html=True)
         if st.button(t['press_sos'], type="primary"):
             st.error(t['sos_sent'])
             st.session_state.drone_dispatched = True
             st.success(t['drone_dispatch'])
             folium_static(create_map(temple, 'drone'))
     
-    with tabs[3]:  # #3
-        st.markdown(f"<div class='section-header'>{t['surveillance']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[3]:  # #3 - IoT & Surveillance Systems
+        st.markdown(f"<div class='section-header'>{t['surveillance']}</div>", unsafe_allow_html=True)
         if st.button(t['scan_now']):
             alert, density = simulate_monitoring(temple)
             fig, ax = plt.subplots(figsize=(6,5))
@@ -376,11 +389,11 @@ if role == t['pilgrim_app']:
             if alert:
                 st.error(t['panic_detected'].format(alert['location']))
     
-    with tabs[4]:  # #5
-        st.markdown(f"<div class='section-header'>{t['parking_mobility']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[4]:  # #5 - Traffic & Mobility Management
+        st.markdown(f"<div class='section-header'>{t['parking_mobility']}</div>", unsafe_allow_html=True)
         folium_static(create_map(temple, 'parking'))
         data = TEMPLE_DATA[temple]
-        st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))  # Scale spots by size
+        st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))
         st.subheader(t['shuttle_schedule'])
         schedule = pd.DataFrame({
             'Time': ['10AM', '12PM', '2PM', '4PM'],
@@ -393,24 +406,36 @@ if role == t['pilgrim_app']:
         flow = np.random.choice(['Smooth', 'Moderate', 'Congested'])
         st.metric("Flow Status", flow, "Police Dynamic System")
     
-    with tabs[5]:  # #7
-        st.markdown(f"<div class='section-header'>{t['voice_nav']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[5]:  # #7 - Accessibility Features
+        st.markdown(f"<div class='section-header'>{t['voice_guide']}</div>", unsafe_allow_html=True)
         if st.button('Start Voice-Guided Mode (#7)'):
             st.info(t['audio_sim'])
-            # Sim Audio (placeholder enhanced)
             st.audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcDbiIAA==", format="audio/wav")
-        st.info("AR Navigation Sim: Priority route highlighted for disabled.")
+        st.info("AR Navigation Sim: Priority route highlighted for disabled/elderly.")
     
-    with tabs[6]:  # #4 Medical
-        st.markdown(f"<div class='section-header'>{t['medical_map']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[6]:  # #4 - Medical Assistance Mapping (Part of Emergency)
+        st.markdown(f"<div class='section-header'>{t['medical_map']}</div>", unsafe_allow_html=True)
         folium_static(create_map(temple, 'medical'))
-        st.info("Nearest Aid: 200m - Mapped for Quick Response.")
+        st.info("Nearest Aid: 200m - Mapped for Quick Response (#4).")
+    
+    with tabs[7]:  # #1 - Dedicated AI Crowd Prediction for Usability
+        st.markdown(f"<div class='section-header'>{t['prediction']}</div>", unsafe_allow_html=True)
+        pred_df = predict_crowd(temple, 7)
+        if not pred_df.empty:
+            st.dataframe(pred_df.style.background_gradient(cmap='YlOrRd'))
+            fig, ax = plt.subplots(figsize=(10,5))
+            bars = ax.bar([d.strftime('%Y-%m-%d') for d in pred_df['date']], pred_df['predicted_footfall'], color='orange', edgecolor='black')
+            ax.set_title(f'Predicted Footfall - {temple} (#1)')
+            ax.set_ylabel('Footfall')
+            ax.set_xlabel('Date')
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
 
 elif role == t['authority_dashboard']:
-    tabs = st.tabs([t['prediction'], t['surveillance'], t['active_queues'], t['barricades'], t['traffic'], 'Engagement (#6)', t['accessibility']])
+    tabs = st.tabs([t['prediction'], t['surveillance'], t['active_queues'], t['barricades'], t['traffic'], 'Engagement (#6)', t['accessibility'], t['sos_nav']])  # Added SOS for completeness
     
-    with tabs[0]:  # #1
-        st.markdown(f"<div class='section-header'>{t['prediction']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[0]:  # #1 - AI/ML-based Crowd Prediction Models
+        st.markdown(f"<div class='section-header'>{t['prediction']}</div>", unsafe_allow_html=True)
         pred_df = predict_crowd(temple, 7)
         if not pred_df.empty:
             st.dataframe(pred_df.style.background_gradient(cmap='YlOrRd'))
@@ -426,8 +451,8 @@ elif role == t['authority_dashboard']:
                 st.warning(t['surge_alert'].format(high_surge['date'].iloc[0].strftime('%Y-%m-%d')))
                 st.session_state.surge_active = True
     
-    with tabs[1]:  # #3
-        st.markdown(f"<div class='section-header'>{t['surveillance']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[1]:  # #3 - IoT & Surveillance Systems
+        st.markdown(f"<div class='section-header'>{t['surveillance']}</div>", unsafe_allow_html=True)
         col1, col2 = st.columns(2)
         with col1:
             if st.button(t['scan_now'], use_container_width=True):
@@ -443,8 +468,8 @@ elif role == t['authority_dashboard']:
             st.error(t['panic_detected'].format(st.session_state.alert['location']))
             st.session_state.crowd_alert_sent = True
     
-    with tabs[2]:  # #2 + #4
-        st.markdown(f"<div class='section-header'>{t['active_queues']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[2]:  # #2 + #4 - Smart Queue & Emergency Alerts
+        st.markdown(f"<div class='section-header'>{t['active_queues']}</div>", unsafe_allow_html=True)
         q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple])
         if not q_df.empty:
             st.dataframe(q_df.style.background_gradient(cmap='coolwarm'))
@@ -456,15 +481,15 @@ elif role == t['authority_dashboard']:
         else:
             st.info(t['no_alerts'])
     
-    with tabs[3]:  # #4 Barricades
-        st.markdown(f"<div class='section-header'>{t['barricades']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[3]:  # #4 - Smart Barricade Systems
+        st.markdown(f"<div class='section-header'>{t['barricades']}</div>", unsafe_allow_html=True)
         statuses = {'Main Gate': 'Locked (High Surge)', 'Darshan Hall': 'Open', 'Exit': 'Active'}
         for loc, stat in statuses.items():
             color = 'red' if 'Locked' in stat else 'green' if 'Open' in stat else 'orange'
-            st.metric(loc, stat, delta=f"AI-Enabled (#4)")
+            st.metric(loc, stat, delta="AI-Enabled (#4)")
     
-    with tabs[4]:  # #5
-        st.markdown(f"<div class='section-header'>{t['parking_mobility']} - {temple}</div>", unsafe_allow_html=True)
+    with tabs[4]:  # #5 - Traffic & Mobility Management
+        st.markdown(f"<div class='section-header'>{t['parking_mobility']}</div>", unsafe_allow_html=True)
         folium_static(create_map(temple, 'parking'))
         data = TEMPLE_DATA[temple]
         st.info(t['empty_spots'].format(int(data['base_footfall']/5000)))
@@ -479,21 +504,32 @@ elif role == t['authority_dashboard']:
         light = np.random.choice(['🟢 Green', '🟡 Yellow', '🔴 Red'])
         st.metric("Flow", light, "City Police System")
     
-    with tabs[5]:  # #6
-        st.markdown(f"<div class='section-header'>Pilgrim Engagement () - {temple}</div>", unsafe_allow_html=True)
+    with tabs[5]:  # #6 - Pilgrim Engagement Platforms
+        st.markdown(f"<div class='section-header'>Pilgrim Engagement (#6)</div>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         q_df = pd.DataFrame([q for q in st.session_state.queue_data if q.get('temple') == temple])
-        col1.metric("Wait Times", f"{np.mean(q_df['est_wait']):.0f} min Avg" if not q_df.empty else "N/A")
-        col2.metric("Notifications Sent", st.session_state.crowd_alert_sent + st.session_state.surge_active)
+        col1.metric("Avg Wait Time", f"{np.mean(q_df['est_wait']):.0f} min" if not q_df.empty else "N/A")
+        col2.metric("Notifications Sent", int(st.session_state.crowd_alert_sent) + int(st.session_state.surge_active))
         col3.metric("Active Pilgrims", len(q_df))
         st.info(f"{t['temple_timings']} | {t['routes']} | {t['facilities']} | {t['emergency_contacts']}")
     
-    with tabs[6]:  # #7
-        st.markdown(f"<div class='section-header'>{t['accessibility']} - {temple}</div>", unsafe_allow_html=True)
-        st.checkbox("Enable Priority Queues ()")
-        if st.button("Broadcast Voice Nav"):
-            st.success("Voice Guide Sent to All Devices ()")
+    with tabs[6]:  # #7 - Accessibility Features
+        st.markdown(f"<div class='section-header'>{t['accessibility']}</div>", unsafe_allow_html=True)
+        st.checkbox("Enable Priority Queues (#7)")
+        if st.button("Broadcast Voice Navigation (#7)"):
+            st.success("Voice Guide Broadcasted to Devices (#7)")
             st.info(t['audio_sim'])
+    
+    with tabs[7]:  # #4 - Emergency & Safety Solutions (Authority View)
+        st.markdown(f"<div class='section-header'>{t['sos_nav']}</div>", unsafe_allow_html=True)
+        st.info("Monitor SOS Alerts and Dispatch (#4)")
+        if st.session_state.drone_dispatched:
+            st.success(t['drone_dispatch'])
+        folium_static(create_map(temple, 'medical'))
 
 st.markdown("---")
 st.caption(t['footer'])
+
+# Auto-refresh for real-time usability (every 30 seconds)
+time.sleep(30)
+st.rerun()
